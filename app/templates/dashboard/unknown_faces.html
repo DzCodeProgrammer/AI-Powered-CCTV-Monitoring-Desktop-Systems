@@ -1,0 +1,51 @@
+{% extends "dashboard/layout.html" %}
+
+{% block page_title %}Unknown Faces{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-1">Unknown Face Gallery</h1>
+        <p class="text-muted mb-0">Screenshots of unrecognized faces captured from CCTV monitoring.</p>
+    </div>
+    <span class="badge text-bg-secondary fs-6">{{ total }} shown</span>
+</div>
+
+{% if faces %}
+<div class="row g-3">
+    {% for face in faces %}
+    <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+        <div class="card border-0 shadow-sm gallery-card h-100">
+            <a href="/dashboard/unknown-faces/{{ face.id }}/image" target="_blank" class="text-decoration-none">
+                <img
+                    src="/dashboard/unknown-faces/{{ face.id }}/image"
+                    alt="Unknown face #{{ face.id }}"
+                    class="card-img-top gallery-thumb"
+                    loading="lazy"
+                >
+            </a>
+            <div class="card-body p-2">
+                <p class="small mb-1 fw-medium">#{{ face.id }}</p>
+                <p class="small text-muted mb-0">
+                    {{ face.detected_at.strftime('%Y-%m-%d %H:%M') if face.detected_at else '-' }}
+                </p>
+                {% if face.camera_source %}
+                <p class="small text-muted text-truncate mb-0" title="{{ face.camera_source }}">
+                    {{ face.camera_source }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-person-exclamation display-6 d-block mb-2"></i>
+        No unknown faces captured yet.
+        <a href="/dashboard/monitor" class="d-block mt-2">Start live monitoring</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -22,6 +22,8 @@ logs/*.log
 logs/_*.py
 screenshots/*
 !screenshots/.gitkeep
+screenshots/unknown/*
+!screenshots/unknown/.gitkeep
 datasets/*
 !datasets/.gitkeep
 

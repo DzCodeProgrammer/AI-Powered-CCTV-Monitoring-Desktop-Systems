@@ -26,18 +26,33 @@ def _should_log(key: str, interval: float) -> bool:
 
 
 def _save_screenshot(
-    frame: np.ndarray,
-    name: str,
+    image: np.ndarray,
+    prefix: str,
     settings: Settings,
+    subdir: str = "",
 ) -> str | None:
     screenshot_dir = Path(settings.screenshot_dir)
+    if subdir:
+        screenshot_dir = screenshot_dir / subdir
     screenshot_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    safe_name = name.replace(" ", "_")
+    safe_name = prefix.replace(" ", "_")
     file_path = screenshot_dir / f"{safe_name}_{timestamp}.jpg"
-    if cv2.imwrite(str(file_path), frame):
+    if cv2.imwrite(str(file_path), image):
+        if subdir:
+            return f"{settings.screenshot_dir}/{subdir}/{file_path.name}".replace("\\", "/")
         return str(file_path).replace("\\", "/")
     return None
+
+
+def _crop_face(frame: np.ndarray, bbox: tuple[int, int, int, int]) -> np.ndarray:
+    x, y, w, h = bbox
+    height, width = frame.shape[:2]
+    x1 = max(0, x)
+    y1 = max(0, y)
+    x2 = min(width, x + w)
+    y2 = min(height, y + h)
+    return frame[y1:y2, x1:x2]
 
 
 def log_matches(
@@ -48,12 +63,24 @@ def log_matches(
     camera_source: str | None = None,
 ) -> None:
     source = camera_source or settings.camera_source
+    committed = False
+
     for match in matches:
         log_key = f"{match.status}:{match.name}:{source}"
         if not _should_log(log_key, settings.detection_interval):
             continue
 
-        screenshot_path = _save_screenshot(frame, match.name, settings)
+        if match.status == STATUS_UNKNOWN:
+            face_crop = _crop_face(frame, match.bbox)
+            screenshot_path = _save_screenshot(
+                face_crop,
+                "Unknown",
+                settings,
+                subdir="unknown",
+            )
+        else:
+            screenshot_path = _save_screenshot(frame, match.name, settings)
+
         detection = Detection(
             user_id=match.user_id,
             name=match.name,
@@ -73,5 +100,7 @@ def log_matches(
                 )
             )
 
-    if matches:
+        committed = True
+
+    if committed:
         db.commit()

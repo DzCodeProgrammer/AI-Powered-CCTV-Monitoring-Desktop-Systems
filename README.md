@@ -4,6 +4,24 @@ Production-style real-time CCTV monitoring with face detection, recognition, att
 
 **Repository:** [github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-System](https://github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-System)
 
+## Session 7 Status (Complete)
+
+- Unknown face screenshots saved to `screenshots/unknown/`
+- Screenshot path stored in `unknown_faces` table
+- Gallery at `/dashboard/unknown-faces`
+
+## Session 6 Status (Complete)
+
+- Dashboard overview with live statistics
+- Total registered users
+- Today's detections & unknown detections
+- Recent activity table
+- Attendance statistics (today + all-time)
+
+```powershell
+python scripts\verify_session6_7.py
+```
+
 ## Session 5 Status (Complete)
 
 - Webcam support (device index `0`, `1`, …)

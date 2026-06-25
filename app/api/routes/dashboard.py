@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
-from sqlalchemy import func, select
+from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.database.connection import get_db
-from app.models.admin import Admin
 from app.models.attendance import Attendance
 from app.models.detection import Detection
 from app.models.unknown_face import UnknownFace
 from app.models.user import User
+from app.services.dashboard_service import get_dashboard_stats, get_recent_activity
 from app.utils.config import get_settings
 from app.utils.templates import templates
 
@@ -17,13 +17,23 @@ router = APIRouter(tags=["Dashboard"])
 settings = get_settings()
 
 
-def _dashboard_context(request: Request, admin: Admin, page: str) -> dict:
+def _dashboard_context(request: Request, admin, page: str) -> dict:
     return {
         "request": request,
         "app_name": settings.app_name,
         "admin": admin,
         "active_page": page,
     }
+
+
+def _resolve_screenshot_path(stored_path: str) -> Path | None:
+    path = Path(stored_path)
+    if path.is_file():
+        return path
+    alt = Path.cwd() / stored_path
+    if alt.is_file():
+        return alt
+    return None
 
 
 @router.get("/")
@@ -40,20 +50,12 @@ async def dashboard_home(request: Request, db: Session = Depends(get_db)):
     if isinstance(auth, RedirectResponse):
         return auth
 
-    total_users = db.scalar(select(func.count()).select_from(User)) or 0
-    total_detections = db.scalar(select(func.count()).select_from(Detection)) or 0
-    total_unknown = db.scalar(select(func.count()).select_from(UnknownFace)) or 0
+    stats = get_dashboard_stats(db)
+    recent_activity = get_recent_activity(db, limit=20)
 
     context = _dashboard_context(request, auth, "dashboard")
-    context.update(
-        {
-            "stats": {
-                "registered_users": total_users,
-                "detections": total_detections,
-                "unknown_faces": total_unknown,
-            }
-        }
-    )
+    context["stats"] = stats
+    context["recent_activity"] = recent_activity
     return templates.TemplateResponse("dashboard/index.html", context)
 
 
@@ -104,3 +106,40 @@ async def dashboard_attendance(request: Request, db: Session = Depends(get_db)):
     context["records"] = records
     context["attendance_interval"] = settings.attendance_interval
     return templates.TemplateResponse("dashboard/attendance.html", context)
+
+
+@router.get("/dashboard/unknown-faces")
+async def unknown_faces_gallery(request: Request, db: Session = Depends(get_db)):
+    auth = require_admin(request, db)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    faces = db.scalars(
+        select(UnknownFace).order_by(UnknownFace.detected_at.desc()).limit(60)
+    ).all()
+
+    context = _dashboard_context(request, auth, "unknown_faces")
+    context["faces"] = faces
+    context["total"] = len(faces)
+    return templates.TemplateResponse("dashboard/unknown_faces.html", context)
+
+
+@router.get("/dashboard/unknown-faces/{face_id}/image")
+async def unknown_face_image(
+    face_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    auth = require_admin(request, db)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    face = db.get(UnknownFace, face_id)
+    if not face:
+        return RedirectResponse(url="/dashboard/unknown-faces", status_code=303)
+
+    file_path = _resolve_screenshot_path(face.screenshot_path)
+    if not file_path:
+        return RedirectResponse(url="/dashboard/unknown-faces", status_code=303)
+
+    return FileResponse(file_path)

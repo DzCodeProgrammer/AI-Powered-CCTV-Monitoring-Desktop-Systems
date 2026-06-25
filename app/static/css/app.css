@@ -69,3 +69,15 @@ body.dashboard-page {
 .legend-unknown {
     background: #dc3545;
 }
+
+.gallery-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: #212529;
+}
+
+.gallery-card {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
