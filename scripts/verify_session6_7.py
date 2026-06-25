@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app import create_app
 from app.database.connection import SessionLocal, init_db
@@ -86,8 +86,10 @@ def main() -> int:
         )
         log_matches(db, settings, frame, [match], camera_source="0")
 
-        unknown_count = db.scalar(select(UnknownFace).where(UnknownFace.id.is_not(None)))
-        if unknown_count is None or unknown_count < 2:
+        unknown_count = db.scalar(
+            select(func.count()).select_from(UnknownFace)
+        ) or 0
+        if unknown_count < 2:
             print("FAIL: unknown face records not saved")
             return 1
 

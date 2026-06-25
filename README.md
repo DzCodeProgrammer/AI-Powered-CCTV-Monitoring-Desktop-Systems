@@ -218,4 +218,6 @@ DB_DRIVER=sqlite
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 DzCodeProgrammer
