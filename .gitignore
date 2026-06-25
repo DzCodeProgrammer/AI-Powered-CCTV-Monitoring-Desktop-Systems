@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Environment
+.env
+
+# Database
+database/*.db
+database/*.db-journal
+
+# Runtime data
+logs/*
+!logs/.gitkeep
+logs/*.log
+logs/_*.py
+screenshots/*
+!screenshots/.gitkeep
+datasets/*
+!datasets/.gitkeep
+
+# DeepFace model weights (Session 2+)
+.deepface/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
