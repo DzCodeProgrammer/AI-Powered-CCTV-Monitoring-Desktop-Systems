@@ -145,6 +145,8 @@ erDiagram
         int id PK
         string image_path
         datetime detected_at
+        string camera_source
+        string notes
     }
     admins {
         int id PK
@@ -204,13 +206,13 @@ All detection events with optional screenshots.
 
 ### `unknown_faces`
 
-Gallery entries for unrecognized faces.
-
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | INT PK | Auto-increment |
 | `image_path` | VARCHAR(500) | Crop in `screenshots/unknown/` |
 | `detected_at` | DATETIME | Capture time |
+| `camera_source` | VARCHAR(200) NULL | Camera identifier |
+| `notes` | VARCHAR(500) NULL | Optional description |
 
 ### `admins`
 

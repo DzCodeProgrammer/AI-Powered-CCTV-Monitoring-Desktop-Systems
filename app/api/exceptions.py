@@ -1,37 +1,30 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, Response
 
 from app.utils.logging import log_exception
 
 logger = logging.getLogger(__name__)
 
 
-async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+def _wants_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept or request.url.path.startswith("/dashboard")
+
+
+async def sqlalchemy_exception_handler(
+    request: Request,
+    exc: SQLAlchemyError,
+) -> Response:
     log_exception("database", f"Unhandled database error on {request.url.path}", exc)
+    if _wants_html(request):
+        return RedirectResponse(url="/dashboard?error=server", status_code=303)
     return JSONResponse(
         status_code=503,
         content={"detail": "Database temporarily unavailable. Please try again."},
-    )
-
-
-async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse | RedirectResponse:
-    if isinstance(exc, SQLAlchemyError):
-        return await sqlalchemy_exception_handler(request, exc)
-
-    log_exception("app", f"Unhandled error on {request.url.path}", exc)
-
-    accept = request.headers.get("accept", "")
-    if "text/html" in accept and request.url.path.startswith("/dashboard"):
-        return RedirectResponse(url="/dashboard?error=server", status_code=303)
-
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An unexpected error occurred."},
     )

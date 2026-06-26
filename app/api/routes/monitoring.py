@@ -130,6 +130,7 @@ async def switch_camera(
 
     try:
         manager = CameraManager.switch_source(settings, get_recognizer(), source)
+        get_recognizer().reset_tracking()
     except ValueError:
         return RedirectResponse(url="/dashboard/monitor?error=camera", status_code=303)
 

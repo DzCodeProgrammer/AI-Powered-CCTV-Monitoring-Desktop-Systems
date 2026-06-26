@@ -57,6 +57,12 @@ class FaceRecognizer:
     def update_embeddings(self, embedding_store: EmbeddingStore) -> None:
         self.embedding_store = embedding_store
 
+    def reset_tracking(self) -> None:
+        """Clear tracks when camera source changes."""
+        self._frame_index = 0
+        self._tracks = []
+        self._last_matches = []
+
     @property
     def deepface_call_count(self) -> int:
         return getattr(self, "_deepface_calls", 0)
@@ -190,13 +196,14 @@ class FaceRecognizer:
             annotated = draw_face_boxes(display, matches)
             return annotated, matches
 
-        detect_every = frame_skip * int(perf["detection_frame_skip"])
-        if (self._frame_index - 1) % detect_every == 0 or not self._tracks:
-            proc_frame, proc_scale = resize_frame(frame, int(perf["process_max_width"]))
-            bboxes = self.detector.detect(proc_frame)
-            full_bboxes = [scale_bbox(b, proc_scale) for b in bboxes]
-            display_bboxes = [scale_bbox(b, 1 / display_scale) for b in full_bboxes]
-            self._update_tracks(display_bboxes)
+        if should_process:
+            detect_every = frame_skip * int(perf["detection_frame_skip"])
+            if not self._tracks or (self._frame_index - 1) % detect_every == 0:
+                proc_frame, proc_scale = resize_frame(frame, int(perf["process_max_width"]))
+                bboxes = self.detector.detect(proc_frame)
+                full_bboxes = [scale_bbox(b, proc_scale) for b in bboxes]
+                display_bboxes = [scale_bbox(b, 1 / display_scale) for b in full_bboxes]
+                self._update_tracks(display_bboxes)
 
         if self._tracks:
             self._run_recognition(display)
@@ -208,10 +215,10 @@ class FaceRecognizer:
         if not matches:
             cv2.putText(
                 annotated,
-                "No face detected",
+                "No face detected - face the camera, improve lighting",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
+                0.55,
                 (0, 255, 255),
                 2,
                 cv2.LINE_AA,

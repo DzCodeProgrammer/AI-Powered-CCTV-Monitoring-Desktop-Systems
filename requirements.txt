@@ -28,5 +28,8 @@ numpy==1.26.4
 tensorflow==2.18.0
 tf-keras==2.18.0
 
+# Export (Session 14)
+openpyxl==3.1.5
+
 # Testing (verify scripts)
 httpx==0.28.1

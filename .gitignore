@@ -30,6 +30,9 @@ datasets/*
 # DeepFace model weights (Session 2+)
 .deepface/
 
+# YuNet ONNX (downloaded on first run)
+models/*.onnx
+
 # IDE
 .vscode/
 .idea/

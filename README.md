@@ -1,6 +1,6 @@
 # AI-Powered CCTV Monitoring Web System
 
-Real-time CCTV monitoring with **face detection**, **face recognition**, **attendance logging**, and a **web dashboard**. Built with Python, FastAPI, OpenCV, DeepFace, and MySQL.
+Real-time CCTV monitoring with **face detection**, **face recognition**, **attendance logging**, **Excel export**, and a **web dashboard**.
 
 **Repository:** [github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems](https://github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems)
 
@@ -8,14 +8,14 @@ Real-time CCTV monitoring with **face detection**, **face recognition**, **atten
 
 ## Features
 
-- Live MJPEG stream from **webcam**, **RTSP**, or **Dahua IP CCTV**
-- Colored face bounding boxes (green = recognized, red = unknown, yellow = detecting)
-- Register persons with face photos; automatic embedding rebuild
+- Live MJPEG stream — webcam, RTSP, or Dahua IP CCTV
+- YuNet + Haar face detection with colored bounding boxes
+- DeepFace (Facenet) recognition + unknown face gallery
 - Attendance logging with duplicate prevention
-- Unknown face gallery with cropped screenshots
+- **Export attendance to Excel** (`.xlsx`)
 - Admin session authentication
-- Optimized for low-end hardware (i5 Gen 4 / 8GB RAM)
-- Centralized `.env` configuration and file-based error logging
+- Optimized for i5 Gen 4 / 8 GB RAM
+- Centralized `.env` configuration + file logging
 
 ---
 
@@ -32,12 +32,18 @@ pip install -r requirements.txt
 copy .env.example .env
 python scripts\generate_secrets.py
 docker compose up -d
+python scripts\migrate_schema.py
 python main.py
 ```
 
-Open [http://127.0.0.1:8000/login](http://127.0.0.1:8000/login) and sign in with credentials from `.env`.
-
-Health check: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+| URL | Purpose |
+|-----|---------|
+| http://127.0.0.1:8000/login | Admin login |
+| http://127.0.0.1:8000/dashboard | Overview |
+| http://127.0.0.1:8000/dashboard/monitor | Live CCTV |
+| http://127.0.0.1:8000/dashboard/attendance/export/preview | Export Excel |
+| http://127.0.0.1:8000/api/health | Health check |
+| http://127.0.0.1:8000/docs | Swagger UI |
 
 ---
 
@@ -45,13 +51,14 @@ Health check: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/healt
 
 | Guide | Description |
 |-------|-------------|
-| [Installation Guide](docs/INSTALLATION.md) | Step-by-step setup on Windows |
-| [Project Structure](docs/PROJECT_STRUCTURE.md) | Folder layout and architecture |
-| [Database Setup](docs/DATABASE.md) | MySQL, SQLite, tables, and migrations |
-| [API Documentation](docs/API.md) | Routes, auth, and response formats |
-| [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment with Nginx and systemd |
+| [Installation Guide](docs/INSTALLATION.md) | Step-by-step setup |
+| [Project Structure](docs/PROJECT_STRUCTURE.md) | Architecture & modules |
+| [Database Setup](docs/DATABASE.md) | MySQL schema & migrations |
+| [API Documentation](docs/API.md) | Routes & responses |
+| [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment |
+| [Final Deliverables](docs/DELIVERABLES.md) | Session 15 checklist |
 
-Interactive API explorer (Swagger UI): [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+**SQL scripts:** [`scripts/init_mysql.sql`](scripts/init_mysql.sql) · [`scripts/schema.sql`](scripts/schema.sql)
 
 ---
 
@@ -62,47 +69,52 @@ Interactive API explorer (Swagger UI): [http://127.0.0.1:8000/docs](http://127.0
 | Backend | Python 3.11, FastAPI, Uvicorn |
 | Database | MySQL 8.x (SQLite fallback) |
 | ORM | SQLAlchemy 2.x |
-| Face AI | OpenCV (Haar), DeepFace (Facenet) |
+| Face AI | OpenCV YuNet/Haar, DeepFace Facenet |
+| Export | openpyxl |
 | Frontend | Jinja2, Bootstrap 5 |
-| Auth | Session cookies (Starlette SessionMiddleware) |
 
 ---
 
 ## Target Hardware
 
-| Component | Minimum |
-|-----------|---------|
-| CPU | Intel Core i5 Gen 4 (or equivalent) |
-| RAM | 8 GB |
-| Storage | 128 GB SSD |
-| OS | Windows 10/11 or Linux |
-
-Enable `LOW_END_MODE=true` in `.env` (default) for best performance on this profile.
+Intel Core i5 Gen 4 · 8 GB RAM · 128 GB SSD · `LOW_END_MODE=true` (default)
 
 ---
 
-## Verification Scripts
+## Verification (Sessions 1–15)
 
 ```powershell
-python scripts\verify_session1.py    # Database & health
-python scripts\verify_session2.py    # Authentication
-python scripts\verify_session9.py  # Configuration
-python scripts\verify_session10.py # Error handling
-python scripts\verify_session11.py # Performance
-python scripts\verify_session12.py # Documentation
+python scripts\verify_session13.py   # Code quality
+python scripts\verify_session14.py   # Excel export
+python scripts\verify_session15.py   # Final deliverables
 python scripts\check_config_security.py
+```
+
+---
+
+## Project Structure
+
+```
+smart-cctv/
+├── app/                 # Application source (api, services, models, …)
+├── scripts/             # SQL, verify, setup utilities
+├── docs/                # Full documentation
+├── database/            # Embeddings cache (+ SQLite if used)
+├── datasets/            # Registered face photos
+├── logs/                # app.log, errors.log
+├── main.py              # Entry point
+├── requirements.txt     # Pinned dependencies
+├── pyproject.toml       # Ruff / PEP8 config
+└── docker-compose.yml   # MySQL 8.0
 ```
 
 ---
 
 ## Security
 
-- `.env` is gitignored — never commit secrets
-- Run `python scripts\generate_secrets.py` for strong passwords
-- RTSP credentials are masked in UI and `/api/health`
-- App binds to `127.0.0.1` by default in development
-
-See [Deployment Guide](docs/DEPLOYMENT.md) for HTTPS and production hardening.
+- `.env` is gitignored — run `python scripts\generate_secrets.py`
+- RTSP passwords masked in UI and `/api/health`
+- Default bind: `127.0.0.1` (use Nginx for production)
 
 ---
 

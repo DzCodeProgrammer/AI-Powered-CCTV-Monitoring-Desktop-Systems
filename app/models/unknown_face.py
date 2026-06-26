@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, String
@@ -14,5 +16,7 @@ class UnknownFace(Base):
     detected_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, index=True
     )
+    camera_source: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     screenshot_path = synonym("image_path")

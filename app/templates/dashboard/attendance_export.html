@@ -1,0 +1,83 @@
+{% extends "dashboard/layout.html" %}
+
+{% block page_title %}Export Attendance{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-1">Export Attendance to Excel</h1>
+        <p class="text-muted mb-0">Download attendance logs as an .xlsx spreadsheet.</p>
+    </div>
+    <a href="/dashboard/attendance" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to log
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h6 text-uppercase text-muted mb-3">Filter &amp; download</h2>
+                <form method="get" action="/dashboard/attendance/export/preview" class="mb-4">
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">Start date (optional)</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date"
+                               value="{{ start_date }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End date (optional)</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date"
+                               value="{{ end_date }}">
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Preview filtered records
+                    </button>
+                </form>
+
+                <a
+                    href="/dashboard/attendance/export{% if start_date or end_date %}?{% endif %}{% if start_date %}start_date={{ start_date }}{% endif %}{% if start_date and end_date %}&{% endif %}{% if end_date %}end_date={{ end_date }}{% endif %}"
+                    class="btn btn-success w-100"
+                >
+                    <i class="bi bi-file-earmark-excel me-1"></i>Download Excel (.xlsx)
+                </a>
+                <p class="small text-muted mt-3 mb-0">
+                    {{ total_records }} record(s) match the current filter (max 10,000 exported).
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h2 class="h6 mb-0">Preview (latest 100 rows)</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Person</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if records %}
+                            {% for row in records %}
+                            <tr>
+                                <td>{{ row.detected_name }}</td>
+                                <td>{{ row.detected_at.strftime('%Y-%m-%d %H:%M') if row.detected_at else '-' }}</td>
+                                <td>{{ row.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">No records for this filter.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

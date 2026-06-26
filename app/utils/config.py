@@ -54,7 +54,10 @@ class Settings(BaseSettings):
     stream_max_width: int = 960
     jpeg_quality: int = 72
     max_faces_per_frame: int = 2
-    face_min_size: int = 48
+    face_min_size: int = 36
+    detection_low_light: bool = True
+    face_detector: Literal["auto", "yunet", "haar"] = "auto"
+    yunet_score_threshold: float = 0.45
 
     dataset_dir: str = "datasets"
     screenshot_dir: str = "screenshots"

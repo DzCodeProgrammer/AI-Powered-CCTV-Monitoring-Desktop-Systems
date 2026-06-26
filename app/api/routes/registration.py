@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
@@ -71,6 +72,20 @@ async def register_submit(
             "dashboard/register.html",
             context,
             status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    except OperationalError as exc:
+        log_exception("registration", "Registration failed (database schema)", exc)
+        if "Unknown column" in str(exc):
+            context["error"] = (
+                "Database schema is outdated. Stop the app, run "
+                "python scripts\\migrate_schema.py, then restart and try again."
+            )
+        else:
+            context["error"] = "Database error during registration. Check logs/errors.log."
+        return templates.TemplateResponse(
+            "dashboard/register.html",
+            context,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
     except Exception as exc:
         log_exception("registration", "Registration failed", exc)

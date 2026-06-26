@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from typing import Any
@@ -29,6 +30,15 @@ def open_video_capture(source: Any) -> cv2.VideoCapture:
     if isinstance(source, str) and source.lower().startswith("rtsp"):
         capture = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
         capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    elif isinstance(source, int) or (isinstance(source, str) and source.strip().isdigit()):
+        index = int(source)
+        if sys.platform == "win32":
+            capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        else:
+            capture = cv2.VideoCapture(index)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        capture.set(cv2.CAP_PROP_FPS, 30)
     else:
         capture = cv2.VideoCapture(source)
     return capture

@@ -107,6 +107,8 @@ All dashboard routes require an active admin session. Unauthenticated requests r
 | GET | `/dashboard/detections` | Last 50 detections |
 | GET | `/dashboard/users` | Registered users list |
 | GET | `/dashboard/attendance` | Attendance log (last 100) |
+| GET | `/dashboard/attendance/export/preview` | Export page with date filters |
+| GET | `/dashboard/attendance/export` | Download `.xlsx` file |
 | GET | `/dashboard/unknown-faces` | Unknown face gallery |
 | GET | `/dashboard/unknown-faces/{id}/image` | Serve unknown face crop |
 | GET | `/dashboard/register` | Registration form |
@@ -121,6 +123,46 @@ All dashboard routes require an active admin session. Unauthenticated requests r
 | `/dashboard/monitor` | `camera=1` | Camera switched confirmation |
 | `/dashboard/monitor` | `error=camera\|rtsp\|dahua` | Camera config error |
 | `/dashboard` | `error=server` | Server error fallback |
+
+---
+
+## Attendance Export (Session 14)
+
+### `GET /dashboard/attendance/export/preview`
+
+Export page with optional date filters and record preview.
+
+**Auth:** Required
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `start_date` | `YYYY-MM-DD` | Filter from date (optional) |
+| `end_date` | `YYYY-MM-DD` | Filter to date (optional) |
+
+**Success:** `200` HTML export page
+
+---
+
+### `GET /dashboard/attendance/export`
+
+Download attendance records as Excel (`.xlsx`).
+
+**Auth:** Required
+
+**Query parameters:** Same as preview (`start_date`, `end_date`)
+
+**Success:** `200`
+
+```
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Content-Disposition: attachment; filename="attendance_YYYYMMDD_HHMMSS.xlsx"
+```
+
+**Columns:** ID, Person, Detected At, Camera Source, Status, Confidence (%), User ID
+
+**Failure:** `303` redirect to `/login` if unauthenticated
 
 ---
 

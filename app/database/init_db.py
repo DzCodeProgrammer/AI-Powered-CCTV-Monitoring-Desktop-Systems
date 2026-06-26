@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.database.base import Base
 from app.database.connection import engine
+from app.database.migrate import run_migrations
 from app.utils.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -47,3 +48,4 @@ def init_db() -> None:
 
     wait_for_db()
     Base.metadata.create_all(bind=engine)
+    run_migrations(engine)
