@@ -36,6 +36,17 @@
 {% if delete_error %}
 <div class="alert alert-danger">Could not delete that entry. It may have already been removed.</div>
 {% endif %}
+{% if not_found_error %}
+<div class="alert alert-danger">Unknown face entry not found.</div>
+{% endif %}
+{% if image_missing_error %}
+<div class="alert alert-danger">Image file is missing on disk.</div>
+{% endif %}
+{% if register_error %}
+<div class="alert alert-danger">
+    Registration failed{% if register_error_msg %}: {{ register_error_msg }}{% endif %}.
+</div>
+{% endif %}
 
 {% if faces %}
 <div class="row g-3">
@@ -60,6 +71,15 @@
                     {{ face.camera_source }}
                 </p>
                 {% endif %}
+                <button
+                    type="button"
+                    class="btn btn-primary btn-sm w-100 mb-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#registerUnknownModal"
+                    data-face-id="{{ face.id }}"
+                >
+                    <i class="bi bi-person-plus me-1"></i>Register
+                </button>
                 <form method="post" action="/dashboard/unknown-faces/{{ face.id }}/delete" class="mb-0"
                       onsubmit="return confirm('Delete this unknown face image?');">
                     <button type="submit" class="btn btn-outline-danger btn-sm w-100">
@@ -71,6 +91,40 @@
     </div>
     {% endfor %}
 </div>
+
+<div class="modal fade" id="registerUnknownModal" tabindex="-1" aria-labelledby="registerUnknownLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="registerUnknownForm" action="">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="registerUnknownLabel">Register as new person</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">
+                        Wajah dari screenshot unknown akan disalin ke dataset dan embedding di-rebuild.
+                    </p>
+                    <label for="unknownPersonName" class="form-label">Full name</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="unknownPersonName"
+                        name="name"
+                        maxlength="100"
+                        placeholder="e.g. John Doe"
+                        required
+                    >
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-person-plus me-1"></i>Register
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% else %}
 <div class="card border-0 shadow-sm">
     <div class="card-body text-center text-muted py-5">
@@ -80,4 +134,19 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const registerModal = document.getElementById('registerUnknownModal');
+if (registerModal) {
+    registerModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const faceId = button.getAttribute('data-face-id');
+        const form = document.getElementById('registerUnknownForm');
+        form.action = '/dashboard/unknown-faces/' + faceId + '/register';
+        document.getElementById('unknownPersonName').value = '';
+    });
+}
+</script>
 {% endblock %}

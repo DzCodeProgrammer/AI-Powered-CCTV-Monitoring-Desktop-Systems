@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h1 class="h3 mb-1">Registered Users</h1>
-        <p class="text-muted mb-0">Faces enrolled for recognition. Remove users who have resigned.</p>
+        <p class="text-muted mb-0">Faces enrolled for recognition. Stop monitoring before bulk changes, or delete — monitoring stops automatically.</p>
     </div>
     <a href="/dashboard/register" class="btn btn-primary">
         <i class="bi bi-person-plus-fill me-1"></i>Register person
@@ -15,7 +15,10 @@
 
 {% if registered_id %}
 <div class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="bi bi-check-circle-fill me-1"></i>Person registered successfully.
+    <i class="bi bi-check-circle-fill me-1"></i>
+    Person registered successfully
+    {% if from_unknown %} from unknown face gallery{% endif %}
+    {% if extra_photos %} with {{ extra_photos }} extra training photo(s){% endif %}.
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 {% endif %}
@@ -56,7 +59,9 @@
                                 height="48"
                             >
                         </td>
-                        <td class="fw-medium">{{ user.full_name }}</td>
+                        <td class="fw-medium">
+                            <a href="/dashboard/user-statistics" class="text-decoration-none">{{ user.full_name }}</a>
+                        </td>
                         <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '-' }}</td>
                         <td>
                             {% if user.is_active %}
@@ -68,7 +73,7 @@
                         <td class="text-truncate small text-muted" style="max-width: 200px;">{{ filename }}</td>
                         <td class="text-end">
                             <form method="post" action="/dashboard/users/{{ user.id }}/delete" class="d-inline mb-0"
-                                  onsubmit="return confirm('Remove {{ user.full_name }}? Their face photo and recognition data will be deleted.');">
+                                  onsubmit="return confirm('Remove {{ user.full_name }}? Monitoring will be stopped automatically. Face data and training photos will be deleted.');">
                                 <button type="submit" class="btn btn-outline-danger btn-sm">
                                     <i class="bi bi-trash me-1"></i>Delete
                                 </button>

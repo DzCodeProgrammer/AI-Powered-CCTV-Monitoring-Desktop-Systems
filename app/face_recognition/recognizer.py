@@ -98,9 +98,16 @@ class FaceRecognizer:
             cosine_distance(face_embedding, entry.embedding)
             for entry in self.embedding_store.entries
         ]
-        best_index = int(np.argmin(distances))
-        best_distance = float(distances[best_index])
+        ranked = sorted(enumerate(distances), key=lambda item: item[1])
+        best_index, best_distance = ranked[0]
+        best_distance = float(best_distance)
         best_entry = self.embedding_store.entries[best_index]
+
+        if len(ranked) >= 2:
+            second_best = float(ranked[1][1])
+            margin = second_best - best_distance
+            if margin < self.settings.recognition_margin:
+                return "Unknown", STATUS_UNKNOWN, max(0.0, 1.0 - best_distance), None
 
         if best_distance < self.settings.recognition_threshold:
             confidence = max(0.0, 1.0 - best_distance)

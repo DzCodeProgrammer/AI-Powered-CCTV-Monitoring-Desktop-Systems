@@ -8,19 +8,41 @@
         <h1 class="h3 mb-1">CCTV Live Monitor</h1>
         <p class="text-muted mb-0">Webcam or RTSP stream with face bounding boxes and confidence scores.</p>
     </div>
-    <form method="post" action="/dashboard/monitor/rebuild-embeddings" class="mb-0">
-        <button type="submit" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-repeat me-1"></i>Rebuild embeddings
-        </button>
-    </form>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        {% if monitoring_active %}
+        <span class="badge text-bg-success"><i class="bi bi-record-circle me-1"></i>Live</span>
+        <form method="post" action="/dashboard/monitor/stop" class="mb-0">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-stop-circle me-1"></i>Stop monitoring
+            </button>
+        </form>
+        {% else %}
+        <span class="badge text-bg-secondary"><i class="bi bi-pause-circle me-1"></i>Stopped</span>
+        <form method="post" action="/dashboard/monitor/start" class="mb-0">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-play-circle me-1"></i>Start monitoring
+            </button>
+        </form>
+        {% endif %}
+        <a href="/dashboard/model-settings" class="btn btn-outline-primary">
+            <i class="bi bi-sliders me-1"></i>Model settings
+        </a>
+    </div>
 </div>
 
-{% if rebuild_success %}
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-  Embeddings rebuilt from registered users.
+{% if monitoring_stopped %}
+<div class="alert alert-secondary alert-dismissible fade show" role="alert">
+  Monitoring stopped. Camera released — safe to delete users or change dataset.
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {% endif %}
+{% if monitoring_started %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  Monitoring started. Live recognition and attendance logging are active.
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
 {% if camera_switched %}
 <div class="alert alert-info alert-dismissible fade show" role="alert">
   Camera source updated.
@@ -36,7 +58,11 @@
 {% if request.query_params.get('error') == 'camera' %}
 <div class="alert alert-danger">Could not open the selected camera source. Check logs/errors.log for details.</div>
 {% endif %}
-{% if camera_connected is sameas false %}
+{% if not monitoring_active %}
+<div class="alert alert-info">
+  Monitoring is off. No camera capture or attendance logging until you click <strong>Start monitoring</strong>.
+</div>
+{% elif camera_connected is sameas false %}
 <div class="alert alert-warning">Camera is disconnected. The stream will show a status overlay and auto-reconnect.</div>
 {% endif %}
 

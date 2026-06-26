@@ -40,16 +40,17 @@ class Settings(BaseSettings):
     dahua_channel: int = 1
     dahua_subtype: int = 0
 
-    face_model: str = "Facenet"
-    recognition_threshold: float = 0.55
-    detection_interval: float = 1.0
+    face_model: str = "Facenet512"
+    recognition_threshold: float = 0.45
+    recognition_margin: float = 0.08
+    detection_interval: float = 30.0
     attendance_interval: float = 300.0
 
     # Performance (Session 11) — tuned for i5 Gen4 / 8GB RAM
     low_end_mode: bool = True
     frame_skip: int = 2
     detection_frame_skip: int = 2
-    recognition_interval: float = 2.0
+    recognition_interval: float = 30.0
     process_max_width: int = 640
     stream_max_width: int = 960
     jpeg_quality: int = 72

@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.exceptions import sqlalchemy_exception_handler
-from app.api.routes import auth, dashboard, health, monitoring, registration
+from app.api.routes import auth, dashboard, health, model_settings, monitoring, registration
 from app.database.connection import SessionLocal, init_db
 from app.services.auth_service import ensure_default_admin
 from app.services.recognition_service import initialize_recognition
@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router)
     app.include_router(dashboard.router)
+    app.include_router(model_settings.router)
     app.include_router(registration.router)
     app.include_router(monitoring.router)
 

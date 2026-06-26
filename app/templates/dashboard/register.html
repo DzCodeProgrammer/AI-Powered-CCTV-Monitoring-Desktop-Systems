@@ -4,10 +4,12 @@
 
 {% block dashboard_content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8 col-xl-6">
+    <div class="col-lg-8 col-xl-7">
         <div class="mb-4">
             <h1 class="h3 mb-1">Register New Person</h1>
-            <p class="text-muted mb-0">Add a face to the recognition dataset.</p>
+            <p class="text-muted mb-0">
+                Tambahkan wajah ke dataset. Upload beberapa foto untuk akurasi lebih baik.
+            </p>
         </div>
 
         {% if success %}
@@ -40,8 +42,8 @@
                         <div class="form-text">Must be unique across registered persons.</div>
                     </div>
 
-                    <div class="mb-4">
-                        <label for="image" class="form-label">Face image</label>
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Primary face photo</label>
                         <input
                             type="file"
                             class="form-control"
@@ -50,7 +52,25 @@
                             accept="image/jpeg,image/png,image/webp"
                             required
                         >
-                        <div class="form-text">JPG, PNG, or WEBP. Max 5 MB. Use a clear front-facing photo.</div>
+                        <div class="form-text">Foto utama, wajah menghadap kamera. Max 5 MB.</div>
+                        <img id="preview" src="" alt="" class="img-thumbnail mt-2 d-none" width="120" height="120">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="extra_images" class="form-label">Extra training photos (optional)</label>
+                        <input
+                            type="file"
+                            class="form-control"
+                            id="extra_images"
+                            name="extra_images"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                        >
+                        <div class="form-text">
+                            Up to {{ max_extra_images or 5 }} extra angles/lighting.
+                            Digunakan untuk rata-rata embedding agar user A dan B lebih mudah dibedakan.
+                        </div>
+                        <div id="extraPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
 
                     <div class="d-flex gap-2">
@@ -70,12 +90,26 @@
 <script>
 document.getElementById('image').addEventListener('change', function (event) {
     const file = event.target.files[0];
-    if (!file) return;
     const preview = document.getElementById('preview');
-    if (preview) {
-        preview.src = URL.createObjectURL(file);
-        preview.classList.remove('d-none');
-    }
+    if (!file || !preview) return;
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove('d-none');
+});
+
+document.getElementById('extra_images').addEventListener('change', function (event) {
+    const container = document.getElementById('extraPreview');
+    container.innerHTML = '';
+    const maxFiles = {{ max_extra_images or 5 }};
+    const files = Array.from(event.target.files || []).slice(0, maxFiles);
+    files.forEach(function (file) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.className = 'img-thumbnail';
+        img.width = 72;
+        img.height = 72;
+        img.style.objectFit = 'cover';
+        container.appendChild(img);
+    });
 });
 </script>
 {% endblock %}

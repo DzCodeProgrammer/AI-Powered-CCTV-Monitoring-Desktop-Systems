@@ -8,10 +8,15 @@ from app.database.connection import SessionLocal, get_db
 from app.face_recognition.recognizer import STATUS_DETECTING
 from app.services.attendance_service import log_attendance
 from app.services.detection_service import log_matches
+from app.services.monitoring_service import (
+    generate_idle_mjpeg,
+    is_monitoring_active,
+    start_monitoring,
+    stop_monitoring,
+)
 from app.services.recognition_service import (
     get_embedding_store,
     get_recognizer,
-    rebuild_embeddings,
 )
 from app.utils.config import get_settings, mask_sensitive_url
 from app.utils.templates import templates
@@ -63,10 +68,12 @@ async def monitor_page(request: Request, db: Session = Depends(get_db)):
     camera_mode = request.session.get("camera_mode", _default_camera_mode())
 
     camera_connected = None
-    try:
-        camera_connected = _get_camera_manager(request).is_connected
-    except RuntimeError:
-        camera_connected = False
+    monitoring_active = is_monitoring_active()
+    if monitoring_active:
+        try:
+            camera_connected = _get_camera_manager(request).is_connected
+        except RuntimeError:
+            camera_connected = False
 
     return templates.TemplateResponse(
         "dashboard/monitor.html",
@@ -87,9 +94,11 @@ async def monitor_page(request: Request, db: Session = Depends(get_db)):
             "dahua_host": settings.dahua_host,
             "dahua_username": settings.dahua_username,
             "attendance_interval": settings.attendance_interval,
-            "rebuild_success": request.query_params.get("rebuilt") == "1",
             "camera_switched": request.query_params.get("camera") == "1",
+            "monitoring_started": request.query_params.get("started") == "1",
+            "monitoring_stopped": request.query_params.get("stopped") == "1",
             "camera_connected": camera_connected,
+            "monitoring_active": monitoring_active,
             "performance": settings.performance_profile,
         },
     )
@@ -129,15 +138,41 @@ async def switch_camera(
         request.session["webcam_index"] = source
 
     try:
-        manager = CameraManager.switch_source(settings, get_recognizer(), source)
-        get_recognizer().reset_tracking()
+        if is_monitoring_active():
+            manager = CameraManager.switch_source(settings, get_recognizer(), source)
+            get_recognizer().reset_tracking()
+            if not manager.is_connected:
+                return RedirectResponse(url="/dashboard/monitor?error=camera", status_code=303)
+        else:
+            CameraManager.reset()
+            try:
+                get_recognizer().reset_tracking()
+            except RuntimeError:
+                pass
     except ValueError:
         return RedirectResponse(url="/dashboard/monitor?error=camera", status_code=303)
 
-    if not manager.is_connected:
-        return RedirectResponse(url="/dashboard/monitor?error=camera", status_code=303)
-
     return RedirectResponse(url="/dashboard/monitor?camera=1", status_code=303)
+
+
+@router.post("/dashboard/monitor/start")
+async def start_monitoring_route(request: Request, db: Session = Depends(get_db)):
+    auth = require_admin(request, db)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    start_monitoring()
+    return RedirectResponse(url="/dashboard/monitor?started=1", status_code=303)
+
+
+@router.post("/dashboard/monitor/stop")
+async def stop_monitoring_route(request: Request, db: Session = Depends(get_db)):
+    auth = require_admin(request, db)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    stop_monitoring()
+    return RedirectResponse(url="/dashboard/monitor?stopped=1", status_code=303)
 
 
 @router.get("/dashboard/monitor/feed")
@@ -147,6 +182,17 @@ async def monitor_feed(request: Request, db: Session = Depends(get_db)):
         return auth
 
     settings = get_settings()
+
+    if not is_monitoring_active():
+        return StreamingResponse(
+            generate_idle_mjpeg(
+                settings,
+                "Monitoring stopped",
+                "Click Start monitoring to resume live CCTV.",
+            ),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
+
     camera_source = _active_camera_source(request)
 
     try:
@@ -176,13 +222,3 @@ async def monitor_feed(request: Request, db: Session = Depends(get_db)):
         generate(),
         media_type="multipart/x-mixed-replace; boundary=frame",
     )
-
-
-@router.post("/dashboard/monitor/rebuild-embeddings")
-async def rebuild_embedding_cache(request: Request, db: Session = Depends(get_db)):
-    auth = require_admin(request, db)
-    if isinstance(auth, RedirectResponse):
-        return auth
-
-    rebuild_embeddings(db, get_settings())
-    return RedirectResponse(url="/dashboard/monitor?rebuilt=1", status_code=303)

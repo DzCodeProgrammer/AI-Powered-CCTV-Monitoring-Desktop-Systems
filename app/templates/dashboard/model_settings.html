@@ -1,0 +1,155 @@
+{% extends "dashboard/layout.html" %}
+
+{% block page_title %}Model Settings{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-1">Training &amp; Model Settings</h1>
+        <p class="text-muted mb-0">
+            Tune recognition without editing <code>.env</code> manually.
+            Values are saved to your environment file and applied immediately.
+        </p>
+    </div>
+    <form method="post" action="/dashboard/model-settings/rebuild-embeddings" class="mb-0"
+          onsubmit="return confirm('Rebuild embeddings from all registered users? This may take a minute.');">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-arrow-repeat me-1"></i>Rebuild embeddings
+        </button>
+    </form>
+</div>
+
+{% if saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    Model settings saved and applied to the live recognizer.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if rebuilt %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    Embeddings rebuilt for {{ registered_count }} registered user(s).
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" action="/dashboard/model-settings" id="modelSettingsForm">
+                    <div class="mb-4">
+                        <label for="recognition_threshold" class="form-label d-flex justify-content-between">
+                            <span>Recognition threshold</span>
+                            <strong id="thresholdValue">{{ '%.2f'|format(recognition_threshold) }}</strong>
+                        </label>
+                        <input
+                            type="range"
+                            class="form-range"
+                            id="recognition_threshold"
+                            name="recognition_threshold"
+                            min="0.20"
+                            max="0.80"
+                            step="0.01"
+                            value="{{ recognition_threshold }}"
+                        >
+                        <div class="form-text">
+                            Lower = lebih ketat (kurang false match). Cosine distance; default sekitar 0.45.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="recognition_margin" class="form-label d-flex justify-content-between">
+                            <span>Recognition margin</span>
+                            <strong id="marginValue">{{ '%.2f'|format(recognition_margin) }}</strong>
+                        </label>
+                        <input
+                            type="range"
+                            class="form-range"
+                            id="recognition_margin"
+                            name="recognition_margin"
+                            min="0.01"
+                            max="0.25"
+                            step="0.01"
+                            value="{{ recognition_margin }}"
+                        >
+                        <div class="form-text">
+                            Jarak minimum antara kandidat terbaik dan kedua terbaik. Lebih tinggi = lebih aman membedakan user mirip.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="recognition_interval" class="form-label d-flex justify-content-between">
+                            <span>Recognition interval (seconds)</span>
+                            <strong id="intervalValue">{{ recognition_interval|int if recognition_interval == recognition_interval|int else recognition_interval }}</strong>
+                        </label>
+                        <input
+                            type="range"
+                            class="form-range"
+                            id="recognition_interval"
+                            name="recognition_interval"
+                            min="1"
+                            max="120"
+                            step="1"
+                            value="{{ recognition_interval }}"
+                        >
+                        <div class="form-text">
+                            Seberapa sering DeepFace menilai ulang setiap wajah yang terdeteksi.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save me-1"></i>Save settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Current model</h2>
+                <p class="mb-2"><strong>{{ face_model }}</strong></p>
+                <p class="small text-muted mb-0">
+                    To change the face model (e.g. ArcFace), edit <code>FACE_MODEL</code> in
+                    <code>.env</code> then rebuild embeddings.
+                </p>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Training tips</h2>
+                <ul class="small text-muted mb-0">
+                    <li>Register 2–5 clear photos per person (Register page).</li>
+                    <li>Use <strong>Rebuild embeddings</strong> after adding users or photos.</li>
+                    <li>Stop monitoring before bulk user changes (Monitor page).</li>
+                    <li>{{ registered_count }} user(s) currently enrolled.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function bindSlider(inputId, outputId, decimals) {
+    const input = document.getElementById(inputId);
+    const output = document.getElementById(outputId);
+    if (!input || !output) return;
+    const update = () => {
+        const value = Number(input.value);
+        output.textContent = decimals === 0 ? String(Math.round(value)) : value.toFixed(decimals);
+    };
+    input.addEventListener('input', update);
+    update();
+}
+
+bindSlider('recognition_threshold', 'thresholdValue', 2);
+bindSlider('recognition_margin', 'marginValue', 2);
+bindSlider('recognition_interval', 'intervalValue', 0);
+</script>
+{% endblock %}

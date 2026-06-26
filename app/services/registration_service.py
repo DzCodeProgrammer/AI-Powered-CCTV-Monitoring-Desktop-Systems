@@ -1,5 +1,6 @@
 import io
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from app.utils.config import Settings
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_EXTRA_IMAGES = 5
 
 
 class RegistrationError(Exception):
@@ -49,6 +51,49 @@ def get_user_by_name(db: Session, name: str) -> User | None:
     return db.scalar(select(User).where(User.full_name == name))
 
 
+def training_dir_for_user(settings: Settings, user_id: int) -> Path:
+    return Path(settings.dataset_dir) / "training" / str(user_id)
+
+
+def _write_dataset_image(
+    settings: Settings,
+    slug: str,
+    ext: str,
+    content: bytes,
+    *,
+    suffix: str = "",
+) -> Path:
+    dataset_dir = Path(settings.dataset_dir)
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = f"{slug}_{timestamp}{suffix}{ext}"
+    file_path = dataset_dir / filename
+    file_path.write_bytes(content)
+    return file_path
+
+
+def save_extra_training_images(
+    settings: Settings,
+    user_id: int,
+    images: list[tuple[UploadFile, bytes]],
+) -> int:
+    if not images:
+        return 0
+
+    training_dir = training_dir_for_user(settings, user_id)
+    training_dir.mkdir(parents=True, exist_ok=True)
+    saved = 0
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    for index, (file, content) in enumerate(images):
+        ext = validate_image_file(file, content)
+        filename = f"extra_{timestamp}_{index}{ext}"
+        (training_dir / filename).write_bytes(content)
+        saved += 1
+
+    return saved
+
+
 def register_person(
     db: Session,
     settings: Settings,
@@ -66,16 +111,9 @@ def register_person(
         raise RegistrationError(f"A person named '{name}' is already registered.")
 
     ext = validate_image_file(file, content)
-
-    dataset_dir = Path(settings.dataset_dir)
-    dataset_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"{slugify_name(name)}_{timestamp}{ext}"
-    file_path = dataset_dir / filename
-
-    file_path.write_bytes(content)
-    relative_path = f"{settings.dataset_dir}/{filename}".replace("\\", "/")
+    slug = slugify_name(name)
+    file_path = _write_dataset_image(settings, slug, ext, content)
+    relative_path = str(file_path).replace("\\", "/")
 
     user = User(
         full_name=name,
@@ -85,4 +123,65 @@ def register_person(
     db.add(user)
     db.commit()
     db.refresh(user)
+    return user
+
+
+def register_person_with_extras(
+    db: Session,
+    settings: Settings,
+    name: str,
+    primary_file: UploadFile,
+    primary_content: bytes,
+    extra_images: list[tuple[UploadFile, bytes]],
+) -> User:
+    if len(extra_images) > MAX_EXTRA_IMAGES:
+        raise RegistrationError(
+            f"You can upload at most {MAX_EXTRA_IMAGES} extra training photos."
+        )
+
+    user = register_person(db, settings, name, primary_file, primary_content)
+    save_extra_training_images(settings, user.id, extra_images)
+    return user
+
+
+def register_person_from_image_file(
+    db: Session,
+    settings: Settings,
+    name: str,
+    source_path: Path,
+) -> User:
+    name = name.strip()
+    if not name:
+        raise RegistrationError("Person name is required.")
+    if len(name) > 100:
+        raise RegistrationError("Name must be 100 characters or fewer.")
+    if get_user_by_name(db, name):
+        raise RegistrationError(f"A person named '{name}' is already registered.")
+    if not source_path.is_file():
+        raise RegistrationError("Source face image was not found.")
+
+    ext = source_path.suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise RegistrationError("Allowed formats: JPG, JPEG, PNG, WEBP.")
+
+    content = source_path.read_bytes()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise RegistrationError("Image must be 5 MB or smaller.")
+
+    slug = slugify_name(name)
+    file_path = _write_dataset_image(settings, slug, ext, content, suffix="_from_unknown")
+    relative_path = str(file_path).replace("\\", "/")
+
+    user = User(
+        full_name=name,
+        image_path=relative_path,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    training_dir = training_dir_for_user(settings, user.id)
+    training_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, training_dir / f"source_unknown{ext}")
     return user

@@ -10,8 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
+from app.services.registration_service import slugify_name
 from app.utils.config import Settings
 from app.utils.logging import get_logger, log_exception
+
+TRAINING_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 logger = get_logger("face_recognition")
 
@@ -66,6 +69,57 @@ def embeddings_cache_path(settings: Settings) -> Path:
     return Path("database") / "embeddings.pkl"
 
 
+def _collect_training_images(user: User, settings: Settings) -> list[Path]:
+    """Primary registration photo plus optional extra shots for averaging."""
+    paths: list[Path] = []
+    seen: set[Path] = set()
+
+    def add(path: Path) -> None:
+        resolved = path.resolve()
+        if resolved in seen or not path.is_file():
+            return
+        if path.suffix.lower() not in TRAINING_IMAGE_EXTENSIONS:
+            return
+        seen.add(resolved)
+        paths.append(path)
+
+    add(Path(user.image_path))
+
+    slug = slugify_name(user.full_name)
+    dataset_dir = Path(settings.dataset_dir)
+    for candidate in sorted(dataset_dir.glob(f"{slug}_*")):
+        add(candidate)
+
+    training_dir = dataset_dir / "training" / str(user.id)
+    if training_dir.is_dir():
+        for candidate in sorted(training_dir.iterdir()):
+            add(candidate)
+
+    return paths
+
+
+def _embed_image(image_path: Path, settings: Settings) -> np.ndarray:
+    vector = DeepFace.represent(
+        img_path=str(image_path),
+        model_name=settings.face_model,
+        enforce_detection=False,
+        detector_backend="opencv",
+    )
+    embedding = parse_embedding(vector)
+    if embedding.size == 0:
+        raise ValueError(f"Empty embedding for {image_path}")
+    return embedding
+
+
+def _average_embeddings(vectors: list[np.ndarray]) -> np.ndarray:
+    stacked = np.vstack(vectors)
+    mean = stacked.mean(axis=0)
+    norm = np.linalg.norm(mean)
+    if norm == 0:
+        return mean
+    return mean / norm
+
+
 def build_embeddings_from_db(db: Session, settings: Settings) -> EmbeddingStore:
     users = db.scalars(
         select(User).where(User.is_active.is_(True)).order_by(User.id)
@@ -74,22 +128,22 @@ def build_embeddings_from_db(db: Session, settings: Settings) -> EmbeddingStore:
     entries: list[EmbeddingEntry] = []
     missing_images: list[str] = []
     for user in users:
-        image_path = Path(user.image_path)
-        if not image_path.is_file():
+        training_images = _collect_training_images(user, settings)
+        if not training_images:
             missing_images.append(f"{user.full_name} (id={user.id}): {user.image_path}")
             continue
         try:
-            vector = DeepFace.represent(
-                img_path=str(image_path),
-                model_name=settings.face_model,
-                enforce_detection=False,
+            vectors = [_embed_image(image_path, settings) for image_path in training_images]
+            embedding = (
+                vectors[0] if len(vectors) == 1 else _average_embeddings(vectors)
             )
-            embedding = parse_embedding(vector)
-            if embedding.size == 0:
-                logger.warning(
-                    "Empty embedding for user %s (id=%s)", user.full_name, user.id
+            if len(vectors) > 1:
+                logger.info(
+                    "Averaged %s training image(s) for %s (id=%s)",
+                    len(vectors),
+                    user.full_name,
+                    user.id,
                 )
-                continue
             entries.append(
                 EmbeddingEntry(user_id=user.id, name=user.full_name, embedding=embedding)
             )

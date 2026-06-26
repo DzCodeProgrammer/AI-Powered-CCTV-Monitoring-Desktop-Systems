@@ -1,0 +1,133 @@
+{% extends "dashboard/layout.html" %}
+
+{% block page_title %}User Statistics{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-1">User Attendance Statistics</h1>
+        <p class="text-muted mb-0">
+            Rata-rata kehadiran per user dalam {{ period_days }} hari terakhir.
+        </p>
+    </div>
+    <form method="get" action="/dashboard/user-statistics" class="d-flex align-items-center gap-2">
+        <label for="days" class="small text-muted mb-0">Periode</label>
+        <select name="days" id="days" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="7" {% if period_days == 7 %}selected{% endif %}>7 hari</option>
+            <option value="14" {% if period_days == 14 %}selected{% endif %}>14 hari</option>
+            <option value="30" {% if period_days == 30 %}selected{% endif %}>30 hari</option>
+            <option value="60" {% if period_days == 60 %}selected{% endif %}>60 hari</option>
+            <option value="90" {% if period_days == 90 %}selected{% endif %}>90 hari</option>
+        </select>
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Registered users</p>
+                <h2 class="h4 mb-0">{{ user_stats|length }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Total check-ins ({{ period_days }}d)</p>
+                <h2 class="h4 mb-0">{{ user_stats|sum(attribute='period_checkins') }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Avg check-ins / user / day</p>
+                {% set total_period = user_stats|sum(attribute='period_checkins') %}
+                {% set avg_all = (total_period / user_stats|length / period_days)|round(2) if user_stats else 0 %}
+                <h2 class="h4 mb-0">{{ avg_all }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user_stats %}
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>User</th>
+                    <th>Check-ins ({{ period_days }}d)</th>
+                    <th>Active days</th>
+                    <th>Avg / hari aktif</th>
+                    <th>Avg / hari kalender</th>
+                    <th>Total (all time)</th>
+                    <th>Last seen</th>
+                    <th>Avg confidence</th>
+                    <th style="min-width: 140px;">Activity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in user_stats %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img
+                                src="/dashboard/datasets/{{ row.image_filename }}"
+                                alt="{{ row.full_name }}"
+                                class="rounded user-thumb"
+                                width="40"
+                                height="40"
+                            >
+                            <span class="fw-medium">{{ row.full_name }}</span>
+                        </div>
+                    </td>
+                    <td><strong>{{ row.period_checkins }}</strong></td>
+                    <td>{{ row.active_days }}</td>
+                    <td>{{ row.avg_per_active_day }}</td>
+                    <td>{{ row.avg_per_calendar_day }}</td>
+                    <td>{{ row.total_checkins }}</td>
+                    <td class="small">
+                        {{ row.last_attendance.strftime('%Y-%m-%d %H:%M') if row.last_attendance else '-' }}
+                    </td>
+                    <td>
+                        {% if row.avg_confidence is not none %}
+                        {{ '%.0f%%'|format(row.avg_confidence * 100) }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set bar_pct = (row.period_checkins / max_period_checkins * 100)|round(0) if max_period_checkins else 0 %}
+                        <div class="stat-bar-track">
+                            <div class="stat-bar-fill" style="width: {{ bar_pct }}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted">Cara membaca</h2>
+        <ul class="small text-muted mb-0">
+            <li><strong>Avg / hari aktif</strong> — total check-in dibagi jumlah hari user terdeteksi.</li>
+            <li><strong>Avg / hari kalender</strong> — total check-in dibagi {{ period_days }} hari (termasuk hari tanpa kehadiran).</li>
+            <li>Check-in mengikuti cooldown absensi di pengaturan sistem.</li>
+        </ul>
+    </div>
+</div>
+{% else %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-bar-chart display-6 d-block mb-2"></i>
+        Belum ada user terdaftar.
+        <a href="/dashboard/register" class="d-block mt-2">Register person</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

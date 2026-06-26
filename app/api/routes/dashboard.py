@@ -21,6 +21,7 @@ from app.services.dashboard_service import (
     DashboardStats,
     get_dashboard_stats,
     get_recent_activity,
+    get_user_attendance_statistics,
 )
 from app.services.export_service import export_attendance_to_excel, fetch_attendance_records
 from app.services.unknown_face_service import (
@@ -125,6 +126,8 @@ async def dashboard_users(
     context = _dashboard_context(request, auth, "users")
     context["users"] = users
     context["registered_id"] = registered
+    context["from_unknown"] = request.query_params.get("from_unknown") == "1"
+    context["extra_photos"] = request.query_params.get("extras")
     context["deleted"] = request.query_params.get("deleted") == "1"
     context["delete_error"] = request.query_params.get("error") == "delete"
     return templates.TemplateResponse("dashboard/users.html", context)
@@ -209,6 +212,32 @@ async def attendance_export_preview(
     return templates.TemplateResponse("dashboard/attendance_export.html", context)
 
 
+@router.get("/dashboard/user-statistics")
+async def dashboard_user_statistics(
+    request: Request,
+    db: Session = Depends(get_db),
+    days: int = Query(default=30, ge=1, le=365),
+):
+    auth = require_admin(request, db)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    user_stats = run_db_operation(
+        db,
+        "load user attendance statistics",
+        lambda: get_user_attendance_statistics(db, period_days=days),
+        default=[],
+    ) or []
+
+    max_period = max((row.period_checkins for row in user_stats), default=0)
+
+    context = _dashboard_context(request, auth, "user_statistics")
+    context["user_stats"] = user_stats
+    context["period_days"] = days
+    context["max_period_checkins"] = max_period
+    return templates.TemplateResponse("dashboard/user_statistics.html", context)
+
+
 @router.get("/dashboard/unknown-faces")
 async def unknown_faces_gallery(request: Request, db: Session = Depends(get_db)):
     auth = require_admin(request, db)
@@ -225,6 +254,10 @@ async def unknown_faces_gallery(request: Request, db: Session = Depends(get_db))
     context["deleted"] = request.query_params.get("deleted") == "1"
     context["deleted_all"] = request.query_params.get("deleted_all") == "1"
     context["delete_error"] = request.query_params.get("error") == "delete"
+    context["register_error"] = request.query_params.get("error") == "register"
+    context["register_error_msg"] = request.query_params.get("msg", "")
+    context["not_found_error"] = request.query_params.get("error") == "not_found"
+    context["image_missing_error"] = request.query_params.get("error") == "image_missing"
     return templates.TemplateResponse("dashboard/unknown_faces.html", context)
 
 

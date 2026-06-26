@@ -10,7 +10,7 @@ Real-time CCTV monitoring with **face detection**, **face recognition**, **atten
 
 - Live MJPEG stream — webcam, RTSP, or Dahua IP CCTV
 - YuNet + Haar face detection with colored bounding boxes
-- DeepFace (Facenet) recognition + unknown face gallery
+- DeepFace (Facenet512) recognition + model settings UI
 - Attendance logging with duplicate prevention
 - **Export attendance to Excel** (`.xlsx`)
 - Admin session authentication
@@ -40,10 +40,21 @@ python main.py
 |-----|---------|
 | http://127.0.0.1:8000/login | Admin login |
 | http://127.0.0.1:8000/dashboard | Overview |
+| http://127.0.0.1:8000/dashboard/model-settings | Model & training tuning |
 | http://127.0.0.1:8000/dashboard/monitor | Live CCTV |
 | http://127.0.0.1:8000/dashboard/attendance/export/preview | Export Excel |
 | http://127.0.0.1:8000/api/health | Health check |
 | http://127.0.0.1:8000/docs | Swagger UI |
+
+### Run & host on LAN
+
+```powershell
+.\scripts\start_host.ps1
+```
+
+Opens the app on **all network interfaces** — use the **Network** URL printed in the console from phones or other PCs on the same Wi‑Fi.
+
+See [Hosting Guide](docs/HOSTING.md) · double-click `run_host.bat`
 
 ---
 
@@ -56,6 +67,7 @@ python main.py
 | [Database Setup](docs/DATABASE.md) | MySQL schema & migrations |
 | [API Documentation](docs/API.md) | Routes & responses |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment |
+| [Hosting Guide](docs/HOSTING.md) | Run locally & LAN host |
 | [Final Deliverables](docs/DELIVERABLES.md) | Session 15 checklist |
 
 **SQL scripts:** [`scripts/init_mysql.sql`](scripts/init_mysql.sql) · [`scripts/schema.sql`](scripts/schema.sql)
