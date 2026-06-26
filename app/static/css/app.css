@@ -70,6 +70,10 @@ body.dashboard-page {
     background: #dc3545;
 }
 
+.legend-detecting {
+    background: #ffc107;
+}
+
 .gallery-thumb {
     width: 100%;
     aspect-ratio: 1;

@@ -111,11 +111,25 @@
                 </ul>
             </div>
         </div>
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Performance</h2>
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2"><strong>Low-end mode:</strong> {{ "On" if performance.low_end_mode else "Off" }}</li>
+                    <li class="mb-2"><strong>Frame skip:</strong> every {{ performance.frame_skip }} frame(s)</li>
+                    <li class="mb-2"><strong>Detection skip:</strong> every {{ performance.detection_frame_skip }} cycle(s)</li>
+                    <li class="mb-2"><strong>DeepFace interval:</strong> {{ performance.recognition_interval }}s / face</li>
+                    <li class="mb-2"><strong>Process width:</strong> {{ performance.process_max_width }}px</li>
+                    <li><strong>Stream width:</strong> {{ performance.stream_max_width }}px</li>
+                </ul>
+            </div>
+        </div>
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <h2 class="h6 text-uppercase text-muted">Overlay</h2>
-                <p class="mb-2 small"><span class="legend-box legend-known"></span> Green box — name + confidence</p>
-                <p class="mb-0 small"><span class="legend-box legend-unknown"></span> Red box — Unknown + confidence</p>
+                <p class="mb-2 small"><span class="legend-box legend-known"></span> Green box — recognized + confidence</p>
+                <p class="mb-2 small"><span class="legend-box legend-unknown"></span> Red box — unknown + confidence</p>
+                <p class="mb-0 small"><span class="legend-box legend-detecting"></span> Yellow box — detecting (DeepFace pending)</p>
             </div>
         </div>
     </div>

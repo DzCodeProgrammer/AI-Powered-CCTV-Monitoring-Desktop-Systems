@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_admin
 from app.camera.manager import CameraManager
 from app.database.connection import SessionLocal, get_db
+from app.face_recognition.recognizer import STATUS_DETECTING
 from app.services.attendance_service import log_attendance
 from app.services.detection_service import log_matches
 from app.services.recognition_service import (
@@ -89,6 +90,7 @@ async def monitor_page(request: Request, db: Session = Depends(get_db)):
             "rebuild_success": request.query_params.get("rebuilt") == "1",
             "camera_switched": request.query_params.get("camera") == "1",
             "camera_connected": camera_connected,
+            "performance": settings.performance_profile,
         },
     )
 
@@ -159,9 +161,10 @@ async def monitor_feed(request: Request, db: Session = Depends(get_db)):
         session = SessionLocal()
         try:
             def on_frame(frame, matches):
-                if matches:
-                    log_matches(session, settings, frame, matches, camera_source)
-                    log_attendance(session, settings, matches, camera_source)
+                loggable = [m for m in matches if m.status != STATUS_DETECTING]
+                if loggable:
+                    log_matches(session, settings, frame, loggable, camera_source)
+                    log_attendance(session, settings, loggable, camera_source)
 
             for chunk in camera.generate_mjpeg(on_frame=on_frame):
                 yield chunk

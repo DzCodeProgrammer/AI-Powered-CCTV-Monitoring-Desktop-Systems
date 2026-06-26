@@ -189,7 +189,11 @@ class CameraManager:
                 except Exception as exc:
                     log_exception("camera", "Frame callback failed", exc)
 
-            success, buffer = cv2.imencode(".jpg", annotated)
+            success, buffer = cv2.imencode(
+                ".jpg",
+                annotated,
+                [int(cv2.IMWRITE_JPEG_QUALITY), int(self.settings.performance_profile["jpeg_quality"])],
+            )
             if not success:
                 time.sleep(0.5)
                 continue

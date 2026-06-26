@@ -45,6 +45,17 @@ class Settings(BaseSettings):
     detection_interval: float = 1.0
     attendance_interval: float = 300.0
 
+    # Performance (Session 11) — tuned for i5 Gen4 / 8GB RAM
+    low_end_mode: bool = True
+    frame_skip: int = 2
+    detection_frame_skip: int = 2
+    recognition_interval: float = 2.0
+    process_max_width: int = 640
+    stream_max_width: int = 960
+    jpeg_quality: int = 72
+    max_faces_per_frame: int = 2
+    face_min_size: int = 48
+
     dataset_dir: str = "datasets"
     screenshot_dir: str = "screenshots"
     log_dir: str = "logs"
@@ -98,6 +109,30 @@ class Settings(BaseSettings):
         if source.startswith("rtsp://"):
             return "rtsp"
         return "webcam"
+
+    @property
+    def performance_profile(self) -> dict[str, int | float | bool]:
+        if self.low_end_mode:
+            return {
+                "low_end_mode": True,
+                "frame_skip": max(self.frame_skip, 2),
+                "detection_frame_skip": max(self.detection_frame_skip, 2),
+                "recognition_interval": max(self.recognition_interval, 2.0),
+                "process_max_width": min(self.process_max_width, 640),
+                "stream_max_width": min(self.stream_max_width, 960),
+                "jpeg_quality": min(self.jpeg_quality, 75),
+                "max_faces_per_frame": min(self.max_faces_per_frame, 2),
+            }
+        return {
+            "low_end_mode": False,
+            "frame_skip": self.frame_skip,
+            "detection_frame_skip": self.detection_frame_skip,
+            "recognition_interval": self.recognition_interval,
+            "process_max_width": self.process_max_width,
+            "stream_max_width": self.stream_max_width,
+            "jpeg_quality": self.jpeg_quality,
+            "max_faces_per_frame": self.max_faces_per_frame,
+        }
 
     @property
     def safe_camera_display(self) -> str:

@@ -29,4 +29,5 @@ def health_check(db: Session = Depends(get_db)):
         "db_name": settings.db_name,
         "camera_mode": settings.camera_mode_label,
         "camera_source": settings.safe_camera_display,
+        "performance": settings.performance_profile,
     }

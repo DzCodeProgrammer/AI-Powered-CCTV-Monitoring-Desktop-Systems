@@ -4,6 +4,35 @@ Production-style real-time CCTV monitoring with face detection, recognition, att
 
 **Repository:** [github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems](https://github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems)
 
+## Session 11 Status (Complete)
+
+Optimized for **Intel Core i5 Gen 4 / 8GB RAM / SSD**:
+
+| Optimization | Detail |
+|---|---|
+| Frame skip | Process AI every N frames; stream stays smooth |
+| Detection skip | Haar cascade runs less often on downscaled frames |
+| DeepFace throttle | Re-recognize each face every ~2s (not every frame) |
+| Downscale | Detection at 640px, stream at 960px |
+| Face limit | Max 2 DeepFace calls per detection cycle |
+
+Colored bounding boxes (standard face-detection style):
+- **Green** — recognized user + confidence
+- **Red** — unknown face
+- **Yellow** — face detected, recognition pending
+
+```env
+LOW_END_MODE=true
+FRAME_SKIP=2
+RECOGNITION_INTERVAL=2.0
+PROCESS_MAX_WIDTH=640
+STREAM_MAX_WIDTH=960
+```
+
+```powershell
+python scripts\verify_session11.py
+```
+
 ## Session 10 Status (Complete)
 
 Centralized error handling with file logging:
