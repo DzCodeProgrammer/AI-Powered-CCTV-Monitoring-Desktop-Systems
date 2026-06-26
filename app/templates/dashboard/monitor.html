@@ -28,7 +28,10 @@
 </div>
 {% endif %}
 {% if request.query_params.get('error') == 'rtsp' %}
-<div class="alert alert-danger">RTSP URL is required for IP CCTV mode.</div>
+<div class="alert alert-danger">RTSP URL is required for custom RTSP mode.</div>
+{% endif %}
+{% if request.query_params.get('error') == 'dahua' %}
+<div class="alert alert-danger">Dahua camera not configured. Set DAHUA_HOST and credentials in .env</div>
 {% endif %}
 {% if request.query_params.get('error') == 'camera' %}
 <div class="alert alert-danger">Could not open the selected camera source.</div>
@@ -60,7 +63,7 @@
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="camera_mode" id="modeWebcam"
-                                   value="webcam" {% if camera_mode != 'rtsp' %}checked{% endif %}>
+                                   value="webcam" {% if camera_mode == 'webcam' %}checked{% endif %}>
                             <label class="form-check-label" for="modeWebcam">Webcam</label>
                         </div>
                         <input type="number" min="0" class="form-control form-control-sm mt-1"
@@ -68,9 +71,20 @@
                     </div>
                     <div class="mb-3">
                         <div class="form-check">
+                            <input class="form-check-input" type="radio" name="camera_mode" id="modeDahua"
+                                   value="dahua" {% if camera_mode == 'dahua' %}checked{% endif %}>
+                            <label class="form-check-label" for="modeDahua">Dahua IP CCTV (.env)</label>
+                        </div>
+                        <p class="small text-muted mt-1 mb-0">
+                            Host: {{ dahua_host or 'not configured' }}<br>
+                            User: {{ dahua_username or '-' }}
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
                             <input class="form-check-input" type="radio" name="camera_mode" id="modeRtsp"
                                    value="rtsp" {% if camera_mode == 'rtsp' %}checked{% endif %}>
-                            <label class="form-check-label" for="modeRtsp">RTSP IP CCTV</label>
+                            <label class="form-check-label" for="modeRtsp">Custom RTSP URL</label>
                         </div>
                         <input type="text" class="form-control form-control-sm mt-1" name="rtsp_url"
                                value="{{ rtsp_url }}"

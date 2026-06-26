@@ -86,7 +86,7 @@ async def dashboard_users(
     if isinstance(auth, RedirectResponse):
         return auth
 
-    users = db.scalars(select(User).order_by(User.registered_at.desc())).all()
+    users = db.scalars(select(User).order_by(User.created_at.desc())).all()
 
     context = _dashboard_context(request, auth, "users")
     context["users"] = users
@@ -101,7 +101,7 @@ async def dashboard_attendance(request: Request, db: Session = Depends(get_db)):
         return auth
 
     records = db.scalars(
-        select(Attendance).order_by(Attendance.detection_time.desc()).limit(100)
+        select(Attendance).order_by(Attendance.detected_at.desc()).limit(100)
     ).all()
 
     context = _dashboard_context(request, auth, "attendance")
@@ -140,7 +140,7 @@ async def unknown_face_image(
     if not face:
         return RedirectResponse(url="/dashboard/unknown-faces", status_code=303)
 
-    file_path = _resolve_screenshot_path(face.screenshot_path)
+    file_path = _resolve_screenshot_path(face.image_path)
     if not file_path:
         return RedirectResponse(url="/dashboard/unknown-faces", status_code=303)
 

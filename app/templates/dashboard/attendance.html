@@ -33,8 +33,8 @@
                     {% for row in records %}
                     <tr>
                         <td>{{ row.id }}</td>
-                        <td class="fw-medium">{{ row.person_name }}</td>
-                        <td>{{ row.detection_time.strftime('%Y-%m-%d %H:%M:%S') if row.detection_time else '-' }}</td>
+                        <td class="fw-medium">{{ row.detected_name }}</td>
+                        <td>{{ row.detected_at.strftime('%Y-%m-%d %H:%M:%S') if row.detected_at else '-' }}</td>
                         <td class="text-truncate small" style="max-width: 180px;">{{ row.camera_source }}</td>
                         <td>
                             {% if row.status == 'Recognized' %}

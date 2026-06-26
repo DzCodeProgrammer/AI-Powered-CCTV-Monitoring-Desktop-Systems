@@ -20,11 +20,11 @@ def has_recent_attendance(
     existing = db.scalar(
         select(Attendance)
         .where(
-            Attendance.person_name == person_name,
+            Attendance.detected_name == person_name,
             Attendance.camera_source == camera_source,
-            Attendance.detection_time >= cutoff,
+            Attendance.detected_at >= cutoff,
         )
-        .order_by(Attendance.detection_time.desc())
+        .order_by(Attendance.detected_at.desc())
         .limit(1)
     )
     return existing is not None
@@ -48,9 +48,9 @@ def log_attendance(
             continue
 
         record = Attendance(
-            person_name=match.name,
+            detected_name=match.name,
             user_id=match.user_id,
-            detection_time=datetime.utcnow(),
+            detected_at=datetime.utcnow(),
             camera_source=camera_source,
             status=match.status,
             confidence=match.confidence,

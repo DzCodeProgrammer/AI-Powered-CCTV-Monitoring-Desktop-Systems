@@ -46,7 +46,7 @@ def validate_image_file(file: UploadFile, content: bytes) -> str:
 
 
 def get_user_by_name(db: Session, name: str) -> User | None:
-    return db.scalar(select(User).where(User.name == name))
+    return db.scalar(select(User).where(User.full_name == name))
 
 
 def register_person(
@@ -78,7 +78,7 @@ def register_person(
     relative_path = f"{settings.dataset_dir}/{filename}".replace("\\", "/")
 
     user = User(
-        name=name,
+        full_name=name,
         image_path=relative_path,
         is_active=True,
     )

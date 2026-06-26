@@ -43,7 +43,7 @@ def main() -> int:
         existing_admin = get_admin_by_username(db, admin_user)
         if existing_admin:
             db.delete(existing_admin)
-        existing_person = db.scalar(select(User).where(User.name == person_name))
+        existing_person = db.scalar(select(User).where(User.full_name == person_name))
         if existing_person:
             if Path(existing_person.image_path).is_file():
                 Path(existing_person.image_path).unlink()
@@ -88,7 +88,7 @@ def main() -> int:
 
     db = SessionLocal()
     try:
-        user = db.scalar(select(User).where(User.name == person_name))
+        user = db.scalar(select(User).where(User.full_name == person_name))
         if not user:
             print("FAIL: user not found in database")
             return 1
@@ -123,7 +123,7 @@ def main() -> int:
     # Cleanup
     db = SessionLocal()
     try:
-        user = db.scalar(select(User).where(User.name == person_name))
+        user = db.scalar(select(User).where(User.full_name == person_name))
         if user:
             if Path(user.image_path).is_file():
                 Path(user.image_path).unlink()

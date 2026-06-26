@@ -83,7 +83,7 @@ def build_embeddings_from_db(db: Session, settings: Settings) -> EmbeddingStore:
             if embedding.size == 0:
                 continue
             entries.append(
-                EmbeddingEntry(user_id=user.id, name=user.name, embedding=embedding)
+                EmbeddingEntry(user_id=user.id, name=user.full_name, embedding=embedding)
             )
             user.embedding_path = str(embeddings_cache_path(settings))
         except Exception:

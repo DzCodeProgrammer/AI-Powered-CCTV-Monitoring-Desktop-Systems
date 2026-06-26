@@ -64,15 +64,15 @@ def get_dashboard_stats(db: Session) -> DashboardStats:
     attendance_total_today = db.scalar(
         select(func.count())
         .select_from(Attendance)
-        .where(Attendance.detection_time >= start, Attendance.detection_time <= end)
+        .where(Attendance.detected_at >= start, Attendance.detected_at <= end)
     ) or 0
 
     attendance_recognized_today = db.scalar(
         select(func.count())
         .select_from(Attendance)
         .where(
-            Attendance.detection_time >= start,
-            Attendance.detection_time <= end,
+            Attendance.detected_at >= start,
+            Attendance.detected_at <= end,
             Attendance.status == STATUS_RECOGNIZED,
         )
     ) or 0
@@ -81,8 +81,8 @@ def get_dashboard_stats(db: Session) -> DashboardStats:
         select(func.count())
         .select_from(Attendance)
         .where(
-            Attendance.detection_time >= start,
-            Attendance.detection_time <= end,
+            Attendance.detected_at >= start,
+            Attendance.detected_at <= end,
             Attendance.status == STATUS_UNKNOWN,
         )
     ) or 0

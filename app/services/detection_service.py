@@ -94,7 +94,7 @@ def log_matches(
         if match.status == STATUS_UNKNOWN and screenshot_path:
             db.add(
                 UnknownFace(
-                    screenshot_path=screenshot_path,
+                    image_path=screenshot_path,
                     camera_source=source,
                     notes="Auto-detected unknown face",
                 )

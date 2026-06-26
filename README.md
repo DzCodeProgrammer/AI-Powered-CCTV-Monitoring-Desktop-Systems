@@ -2,7 +2,34 @@
 
 Production-style real-time CCTV monitoring with face detection, recognition, attendance logging, and a web dashboard.
 
-**Repository:** [github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-System](https://github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-System)
+**Repository:** [github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems](https://github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems)
+
+## Session 9 Status (Complete)
+
+Centralized configuration via `.env`:
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=cctv_user
+DB_PASSWORD=your_password
+DB_NAME=smart_cctv
+
+CAMERA_SOURCE=dahua
+DAHUA_USERNAME=admin
+DAHUA_PASSWORD=your_dahua_password
+DAHUA_HOST=192.168.100.135
+DAHUA_PORT=554
+```
+
+Verify configuration & security:
+
+```powershell
+python scripts\verify_session9.py
+python scripts\check_config_security.py
+```
+
+**Security:** credentials stay in `.env` only (gitignored). RTSP passwords are masked in UI and `/api/health`.
 
 ## Session 7 Status (Complete)
 

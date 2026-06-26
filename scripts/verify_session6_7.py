@@ -43,10 +43,10 @@ def main() -> int:
             db.delete(admin)
         db.execute(delete(UnknownFace))
         db.execute(delete(Detection))
-        db.execute(delete(User).where(User.name == "_Verify S67_"))
+        db.execute(delete(User).where(User.full_name == "_Verify S67_"))
         db.commit()
         create_admin(db, admin_user, "verify-s67-pass-123")
-        db.add(User(name="_Verify S67_", image_path="datasets/x.jpg", is_active=True))
+        db.add(User(full_name="_Verify S67_", image_path="datasets/x.jpg", is_active=True))
         db.commit()
     finally:
         db.close()
@@ -69,7 +69,7 @@ def main() -> int:
     try:
         db.add(
             UnknownFace(
-                screenshot_path=rel_path,
+                image_path=rel_path,
                 camera_source="0",
                 notes="verify",
             )
@@ -135,7 +135,7 @@ def main() -> int:
             db.delete(admin)
         db.execute(delete(UnknownFace))
         db.execute(delete(Detection))
-        db.execute(delete(User).where(User.name == "_Verify S67_"))
+        db.execute(delete(User).where(User.full_name == "_Verify S67_"))
         db.commit()
     finally:
         db.close()

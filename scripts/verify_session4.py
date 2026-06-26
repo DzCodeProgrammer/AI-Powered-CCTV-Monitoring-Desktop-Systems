@@ -55,7 +55,7 @@ def main() -> int:
 
     db = SessionLocal()
     try:
-        existing = db.scalar(select(User).where(User.name == person_name))
+        existing = db.scalar(select(User).where(User.full_name == person_name))
         if existing:
             db.delete(existing)
             db.commit()
@@ -64,7 +64,7 @@ def main() -> int:
         make_non_face_image(other_path)
 
         user = User(
-            name=person_name,
+            full_name=person_name,
             image_path=str(image_path).replace("\\", "/"),
             is_active=True,
         )
@@ -144,7 +144,7 @@ def main() -> int:
 
     db = SessionLocal()
     try:
-        user = db.scalar(select(User).where(User.name == person_name))
+        user = db.scalar(select(User).where(User.full_name == person_name))
         if user:
             db.delete(user)
             db.commit()

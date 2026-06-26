@@ -36,7 +36,7 @@ def main() -> int:
 
     db = SessionLocal()
     try:
-        db.execute(delete(Attendance).where(Attendance.person_name == "_Verify S5_"))
+        db.execute(delete(Attendance).where(Attendance.detected_name == "_Verify S5_"))
         db.commit()
 
         match = FaceMatch(
@@ -51,7 +51,7 @@ def main() -> int:
             print("FAIL: first attendance not saved")
             return 1
         record = saved[0]
-        if not record.id or record.person_name != "_Verify S5_":
+        if not record.id or record.detected_name != "_Verify S5_":
             print("FAIL: attendance fields missing")
             return 1
         if record.camera_source != "0" or record.status != STATUS_RECOGNIZED:
@@ -70,13 +70,13 @@ def main() -> int:
             return 1
 
         count = db.scalar(
-            select(Attendance).where(Attendance.person_name == "_Verify S5_")
+            select(Attendance).where(Attendance.detected_name == "_Verify S5_")
         )
         if count is None:
             print("FAIL: attendance row missing")
             return 1
 
-        db.execute(delete(Attendance).where(Attendance.person_name == "_Verify S5_"))
+        db.execute(delete(Attendance).where(Attendance.detected_name == "_Verify S5_"))
         db.commit()
     finally:
         db.close()

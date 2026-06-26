@@ -40,14 +40,14 @@
                             {% set filename = user.image_path.replace('\\', '/').split('/')[-1] %}
                             <img
                                 src="/dashboard/datasets/{{ filename }}"
-                                alt="{{ user.name }}"
+                                alt="{{ user.full_name }}"
                                 class="rounded user-thumb"
                                 width="48"
                                 height="48"
                             >
                         </td>
-                        <td class="fw-medium">{{ user.name }}</td>
-                        <td>{{ user.registered_at.strftime('%Y-%m-%d %H:%M:%S') if user.registered_at else '-' }}</td>
+                        <td class="fw-medium">{{ user.full_name }}</td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '-' }}</td>
                         <td>
                             {% if user.is_active %}
                             <span class="badge text-bg-success">Active</span>
