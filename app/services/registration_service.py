@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
+from app.services.whatsapp_service import normalize_wa_phone
 from app.utils.config import Settings
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -94,12 +95,24 @@ def save_extra_training_images(
     return saved
 
 
+def validate_phone_number(phone: str | None) -> str | None:
+    if phone is None or not str(phone).strip():
+        return None
+    normalized = normalize_wa_phone(str(phone).strip())
+    if not normalized:
+        raise RegistrationError(
+            "Invalid WhatsApp number. Use format 628123456789 or 08123456789."
+        )
+    return normalized
+
+
 def register_person(
     db: Session,
     settings: Settings,
     name: str,
     file: UploadFile,
     content: bytes,
+    phone_number: str | None = None,
 ) -> User:
     name = name.strip()
     if not name:
@@ -114,11 +127,13 @@ def register_person(
     slug = slugify_name(name)
     file_path = _write_dataset_image(settings, slug, ext, content)
     relative_path = str(file_path).replace("\\", "/")
+    phone = validate_phone_number(phone_number)
 
     user = User(
         full_name=name,
         image_path=relative_path,
         is_active=True,
+        phone_number=phone,
     )
     db.add(user)
     db.commit()
@@ -133,13 +148,16 @@ def register_person_with_extras(
     primary_file: UploadFile,
     primary_content: bytes,
     extra_images: list[tuple[UploadFile, bytes]],
+    phone_number: str | None = None,
 ) -> User:
     if len(extra_images) > MAX_EXTRA_IMAGES:
         raise RegistrationError(
             f"You can upload at most {MAX_EXTRA_IMAGES} extra training photos."
         )
 
-    user = register_person(db, settings, name, primary_file, primary_content)
+    user = register_person(
+        db, settings, name, primary_file, primary_content, phone_number=phone_number
+    )
     save_extra_training_images(settings, user.id, extra_images)
     return user
 
@@ -149,6 +167,7 @@ def register_person_from_image_file(
     settings: Settings,
     name: str,
     source_path: Path,
+    phone_number: str | None = None,
 ) -> User:
     name = name.strip()
     if not name:
@@ -171,11 +190,13 @@ def register_person_from_image_file(
     slug = slugify_name(name)
     file_path = _write_dataset_image(settings, slug, ext, content, suffix="_from_unknown")
     relative_path = str(file_path).replace("\\", "/")
+    phone = validate_phone_number(phone_number)
 
     user = User(
         full_name=name,
         image_path=relative_path,
         is_active=True,
+        phone_number=phone,
     )
     db.add(user)
     db.commit()

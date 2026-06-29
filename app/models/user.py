@@ -19,6 +19,7 @@ class User(Base):
         "created_at", DateTime, default=datetime.utcnow
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     name = synonym("full_name")
     registered_at = synonym("created_at")

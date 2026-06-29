@@ -12,6 +12,7 @@ from app.face_recognition.recognizer import STATUS_UNKNOWN, FaceMatch
 from app.database.errors import safe_commit
 from app.models.detection import Detection
 from app.models.unknown_face import UnknownFace
+from app.services.whatsapp_service import notify_unknown_face
 from app.utils.config import Settings
 
 _last_logged: dict[str, float] = {}
@@ -65,6 +66,7 @@ def log_matches(
 ) -> None:
     source = camera_source or settings.camera_source
     committed = False
+    unknown_events: list[str] = []
 
     for match in matches:
         log_key = f"{match.status}:{match.name}:{source}"
@@ -100,8 +102,11 @@ def log_matches(
                     notes="Auto-detected unknown face",
                 )
             )
+            unknown_events.append(source)
 
         committed = True
 
     if committed:
-        safe_commit(db, "log detection matches")
+        if safe_commit(db, "log detection matches"):
+            for event_source in unknown_events:
+                notify_unknown_face(settings, camera_source=event_source)

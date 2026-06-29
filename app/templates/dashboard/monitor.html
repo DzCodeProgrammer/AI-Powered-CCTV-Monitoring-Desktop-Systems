@@ -9,6 +9,12 @@
         <p class="text-muted mb-0">Webcam or RTSP stream with face bounding boxes and confidence scores.</p>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center">
+        {% if schedule_status.enabled %}
+        <span class="badge {% if schedule_status.within_window %}text-bg-info{% else %}text-bg-secondary{% endif %}"
+              title="{{ schedule_status.label }}">
+            <i class="bi bi-clock me-1"></i>Schedule
+        </span>
+        {% endif %}
         {% if monitoring_active %}
         <span class="badge text-bg-success"><i class="bi bi-record-circle me-1"></i>Live</span>
         <form method="post" action="/dashboard/monitor/stop" class="mb-0">
@@ -57,6 +63,11 @@
 {% endif %}
 {% if request.query_params.get('error') == 'camera' %}
 <div class="alert alert-danger">Could not open the selected camera source. Check logs/errors.log for details.</div>
+{% endif %}
+{% if schedule_status.enabled and not schedule_status.within_window and not monitoring_active %}
+<div class="alert alert-secondary">
+  Monitoring schedule is on ({{ monitor_schedule_start }}–{{ monitor_schedule_end }}). Monitoring will start automatically inside that window.
+</div>
 {% endif %}
 {% if not monitoring_active %}
 <div class="alert alert-info">
@@ -123,6 +134,17 @@
                         <i class="bi bi-camera-video me-1"></i>Apply camera
                     </button>
                 </form>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Face AI pipeline</h2>
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2"><i class="bi bi-bounding-box text-warning me-1"></i><strong>Detection</strong> — YuNet/Haar finds faces every frame (yellow box while pending)</li>
+                    <li class="mb-2"><i class="bi bi-person-check text-success me-1"></i><strong>Recognition</strong> — DeepFace {{ face_model }} every {{ performance.recognition_interval }}s (green = known, red = unknown)</li>
+                    <li class="mb-2"><i class="bi bi-whatsapp text-success me-1"></i><strong>WA absensi</strong> — max 2×/hari: masuk 07:00–16:59, pulang 17:00–06:59 WIB</li>
+                    <li><i class="bi bi-clock-history me-1"></i><strong>Log cooldown</strong> — detection {{ performance.recognition_interval }}s · attendance {{ attendance_interval }}s</li>
+                </ul>
             </div>
         </div>
         <div class="card border-0 shadow-sm mb-3">

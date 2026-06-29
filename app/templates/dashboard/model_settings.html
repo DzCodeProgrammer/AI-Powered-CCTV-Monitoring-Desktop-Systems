@@ -7,8 +7,7 @@
     <div>
         <h1 class="h3 mb-1">Training &amp; Model Settings</h1>
         <p class="text-muted mb-0">
-            Tune recognition without editing <code>.env</code> manually.
-            Values are saved to your environment file and applied immediately.
+            Tune recognition and performance without editing <code>.env</code> manually.
         </p>
     </div>
     <form method="post" action="/dashboard/model-settings/rebuild-embeddings" class="mb-0"
@@ -25,6 +24,47 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {% endif %}
+{% if notif_saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    WhatsApp notification settings saved.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if camera_saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    Camera settings saved. Stop and start monitoring to apply the new stream.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if wa_test_ok %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ wa_test_msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% elif request.query_params.get('wa_test') == 'fail' %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ wa_test_msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if ops_saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    Operations settings saved. Monitoring schedule applied immediately.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if cleanup_done %}
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+    Disk cleanup completed for old logs and screenshots.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if preset_applied %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>Laptop 8GB</strong> preset applied. Rebuild embeddings if you changed the face model.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
 {% if rebuilt %}
 <div class="alert alert-success alert-dismissible fade show" role="alert">
     Embeddings rebuilt for {{ registered_count }} registered user(s).
@@ -37,27 +77,19 @@
 
 <div class="row g-4">
     <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
+                <h2 class="h6 text-uppercase text-muted mb-3">Recognition</h2>
                 <form method="post" action="/dashboard/model-settings" id="modelSettingsForm">
                     <div class="mb-4">
                         <label for="recognition_threshold" class="form-label d-flex justify-content-between">
                             <span>Recognition threshold</span>
                             <strong id="thresholdValue">{{ '%.2f'|format(recognition_threshold) }}</strong>
                         </label>
-                        <input
-                            type="range"
-                            class="form-range"
-                            id="recognition_threshold"
-                            name="recognition_threshold"
-                            min="0.20"
-                            max="0.80"
-                            step="0.01"
-                            value="{{ recognition_threshold }}"
-                        >
-                        <div class="form-text">
-                            Lower = lebih ketat (kurang false match). Cosine distance; default sekitar 0.45.
-                        </div>
+                        <input type="range" class="form-range" id="recognition_threshold"
+                               name="recognition_threshold" min="0.20" max="0.80" step="0.01"
+                               value="{{ recognition_threshold }}">
+                        <div class="form-text">Lower = lebih ketat. Default ~0.45.</div>
                     </div>
 
                     <div class="mb-4">
@@ -65,39 +97,55 @@
                             <span>Recognition margin</span>
                             <strong id="marginValue">{{ '%.2f'|format(recognition_margin) }}</strong>
                         </label>
-                        <input
-                            type="range"
-                            class="form-range"
-                            id="recognition_margin"
-                            name="recognition_margin"
-                            min="0.01"
-                            max="0.25"
-                            step="0.01"
-                            value="{{ recognition_margin }}"
-                        >
-                        <div class="form-text">
-                            Jarak minimum antara kandidat terbaik dan kedua terbaik. Lebih tinggi = lebih aman membedakan user mirip.
-                        </div>
+                        <input type="range" class="form-range" id="recognition_margin"
+                               name="recognition_margin" min="0.01" max="0.25" step="0.01"
+                               value="{{ recognition_margin }}">
+                        <div class="form-text">Jarak min. antara kandidat #1 dan #2.</div>
                     </div>
 
                     <div class="mb-4">
                         <label for="recognition_interval" class="form-label d-flex justify-content-between">
-                            <span>Recognition interval (seconds)</span>
+                            <span>Recognition &amp; detection interval (seconds)</span>
                             <strong id="intervalValue">{{ recognition_interval|int if recognition_interval == recognition_interval|int else recognition_interval }}</strong>
                         </label>
-                        <input
-                            type="range"
-                            class="form-range"
-                            id="recognition_interval"
-                            name="recognition_interval"
-                            min="1"
-                            max="120"
-                            step="1"
-                            value="{{ recognition_interval }}"
-                        >
-                        <div class="form-text">
-                            Seberapa sering DeepFace menilai ulang setiap wajah yang terdeteksi.
-                        </div>
+                        <input type="range" class="form-range" id="recognition_interval"
+                               name="recognition_interval" min="1" max="120" step="1"
+                               value="{{ recognition_interval }}">
+                        <div class="form-text">Seberapa sering DeepFace menilai ulang tiap wajah.</div>
+                    </div>
+
+                    <h2 class="h6 text-uppercase text-muted mb-3 mt-2">Performance (CPU / RAM)</h2>
+
+                    <div class="mb-4">
+                        <label for="frame_skip" class="form-label d-flex justify-content-between">
+                            <span>Frame skip</span>
+                            <strong id="frameSkipValue">{{ frame_skip }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="frame_skip"
+                               name="frame_skip" min="1" max="6" step="1" value="{{ frame_skip }}">
+                        <div class="form-text">Proses 1 dari N frame — lebih tinggi = lebih ringan di laptop.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="process_max_width" class="form-label d-flex justify-content-between">
+                            <span>Process max width (px)</span>
+                            <strong id="processWidthValue">{{ process_max_width }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="process_max_width"
+                               name="process_max_width" min="320" max="1280" step="32"
+                               value="{{ process_max_width }}">
+                        <div class="form-text">Resolusi internal deteksi/recognition. 640 optimal untuk 8 GB.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="max_faces_per_frame" class="form-label d-flex justify-content-between">
+                            <span>Max faces per frame</span>
+                            <strong id="maxFacesValue">{{ max_faces_per_frame }}</strong>
+                        </label>
+                        <input type="range" class="form-range" id="max_faces_per_frame"
+                               name="max_faces_per_frame" min="1" max="4" step="1"
+                               value="{{ max_faces_per_frame }}">
+                        <div class="form-text">Batasi wajah yang diproses bersamaan.</div>
                     </div>
 
                     <button type="submit" class="btn btn-success">
@@ -109,25 +157,246 @@
     </div>
 
     <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-3 border-start border-4 border-primary">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Hardware preset</h2>
+                <p class="mb-2"><strong>Laptop 8GB</strong> <span class="text-muted small">(ASUS X455L class)</span></p>
+                <p class="small text-muted">
+                    Facenet512, LOW_END_MODE, frame skip 2, 640px process, 2 faces, 30s recognition interval.
+                </p>
+                <form method="post" action="/dashboard/model-settings/preset/laptop-8gb" class="mb-0"
+                      onsubmit="return confirm('Apply Laptop 8GB preset? Current tuning values will be overwritten.');">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-laptop me-1"></i>Apply Laptop 8GB preset
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
                 <h2 class="h6 text-uppercase text-muted">Current model</h2>
-                <p class="mb-2"><strong>{{ face_model }}</strong></p>
+                <p class="mb-1"><strong>{{ face_model }}</strong></p>
                 <p class="small text-muted mb-0">
-                    To change the face model (e.g. ArcFace), edit <code>FACE_MODEL</code> in
-                    <code>.env</code> then rebuild embeddings.
+                    Low-end mode: {{ "On" if low_end_mode else "Off" }} · {{ registered_count }} user(s) enrolled.
                 </p>
             </div>
         </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h2 class="h6 text-uppercase text-muted">Training tips</h2>
+                <h2 class="h6 text-uppercase text-muted">Tips</h2>
                 <ul class="small text-muted mb-0">
-                    <li>Register 2–5 clear photos per person (Register page).</li>
-                    <li>Use <strong>Rebuild embeddings</strong> after adding users or photos.</li>
-                    <li>Stop monitoring before bulk user changes (Monitor page).</li>
-                    <li>{{ registered_count }} user(s) currently enrolled.</li>
+                    <li>Stop monitoring before bulk user changes.</li>
+                    <li>Rebuild embeddings after preset if <code>FACE_MODEL</code> changed.</li>
+                    <li>Watch CPU/RAM on the dashboard — stop monitoring if bars turn red.</li>
                 </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h6 text-uppercase text-muted mb-3">Monitoring schedule</h2>
+                <p class="small text-muted">
+                    Auto start/stop live monitoring by time — saves CPU and heat on laptops.
+                    {% if schedule_status.enabled %}
+                    <span class="badge {% if schedule_status.within_window %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                        {{ schedule_status.label }}
+                    </span>
+                    {% endif %}
+                </p>
+                <form method="post" action="/dashboard/model-settings/operations" class="row g-3">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="monitor_schedule_enabled"
+                                   name="monitor_schedule_enabled" value="true"
+                                   {% if monitor_schedule_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="monitor_schedule_enabled">
+                                Enable automatic monitoring schedule
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="monitor_schedule_start" class="form-label">Start time</label>
+                        <input type="time" class="form-control" id="monitor_schedule_start"
+                               name="monitor_schedule_start" value="{{ monitor_schedule_start }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="monitor_schedule_end" class="form-label">Stop time</label>
+                        <input type="time" class="form-control" id="monitor_schedule_end"
+                               name="monitor_schedule_end" value="{{ monitor_schedule_end }}" required>
+                    </div>
+                    <div class="col-12">
+                        <h2 class="h6 text-uppercase text-muted mb-2 mt-2">Disk cleanup (HDD)</h2>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="cleanup_enabled"
+                                   name="cleanup_enabled" value="true"
+                                   {% if cleanup_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="cleanup_enabled">
+                                Auto-delete old logs &amp; screenshots
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="log_retention_days" class="form-label">Log retention (days)</label>
+                        <input type="number" class="form-control" id="log_retention_days"
+                               name="log_retention_days" min="1" max="365" value="{{ log_retention_days }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="screenshot_retention_days" class="form-label">Screenshot retention (days)</label>
+                        <input type="number" class="form-control" id="screenshot_retention_days"
+                               name="screenshot_retention_days" min="1" max="365" value="{{ screenshot_retention_days }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cleanup_interval_hours" class="form-label">Cleanup every (hours)</label>
+                        <input type="number" class="form-control" id="cleanup_interval_hours"
+                               name="cleanup_interval_hours" min="1" max="168" value="{{ cleanup_interval_hours }}">
+                    </div>
+                    <div class="col-12 d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-1"></i>Save operations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Windows auto-start</h2>
+                <p class="small text-muted">
+                    Run the server automatically when Windows logs in — no terminal window needed.
+                </p>
+                <ol class="small text-muted">
+                    <li>Open PowerShell in the project folder.</li>
+                    <li>Run: <code>.\scripts\install_autostart.ps1</code></li>
+                    <li>Reboot or log off/on to test.</li>
+                </ol>
+                <p class="small text-muted mb-2">
+                    Remove with: <code>.\scripts\uninstall_autostart.ps1</code>
+                </p>
+                <form method="post" action="/dashboard/model-settings/run-cleanup" class="mb-0"
+                      onsubmit="return confirm('Delete old log and screenshot files now?');">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-trash me-1"></i>Run cleanup now
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h6 text-uppercase text-muted mb-3">WhatsApp notifications (Fonnte)</h2>
+                <p class="small text-muted mb-3">
+                    Alert admin saat wajah unknown; kirim konfirmasi absensi ke nomor user terdaftar.
+                </p>
+                <form method="post" action="/dashboard/model-settings/notifications" class="row g-3">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="wa_notify_enabled"
+                                   name="wa_notify_enabled" value="true"
+                                   {% if wa_notify_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="wa_notify_enabled">
+                                Enable WhatsApp notifications
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label for="wa_api_token" class="form-label">Fonnte API token</label>
+                        <input type="password" class="form-control" id="wa_api_token" name="wa_api_token"
+                               placeholder="{% if wa_token_configured %}Token tersimpan — kosongkan jika tidak ganti{% else %}Paste token dari fonnte.com{% endif %}"
+                               autocomplete="off">
+                    </div>
+                    <div class="col-12">
+                        <label for="wa_admin_phones" class="form-label">Admin phones (unknown face)</label>
+                        <input type="text" class="form-control" id="wa_admin_phones" name="wa_admin_phones"
+                               value="{{ wa_admin_phones }}"
+                               placeholder="628123456789,628987654321">
+                        <div class="form-text">Pisahkan dengan koma. Menerima alert wajah tidak dikenal.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="wa_notify_unknown"
+                                   name="wa_notify_unknown" value="true"
+                                   {% if wa_notify_unknown %}checked{% endif %}>
+                            <label class="form-check-label" for="wa_notify_unknown">Unknown face alerts</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="wa_notify_attendance"
+                                   name="wa_notify_attendance" value="true"
+                                   {% if wa_notify_attendance %}checked{% endif %}>
+                            <label class="form-check-label" for="wa_notify_attendance">Attendance to user</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-whatsapp me-1"></i>Save notifications
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted">Test WhatsApp</h2>
+                <form method="post" action="/dashboard/model-settings/test-wa" class="row g-2">
+                    <div class="col-12">
+                        <input type="tel" class="form-control" name="wa_test_phone"
+                               placeholder="628123456789" required maxlength="20">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-outline-success w-100">
+                            Send test message
+                        </button>
+                    </div>
+                </form>
+                <p class="small text-muted mt-3 mb-0">
+                    Daftar di <a href="https://fonnte.com" target="_blank" rel="noopener">fonnte.com</a>,
+                    hubungkan WhatsApp, salin token ke <code>WA_API_TOKEN</code>.
+                    Isi nomor WA di halaman Users untuk absensi.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h6 text-uppercase text-muted mb-3">Dahua stream quality</h2>
+                <p class="small text-muted">
+                    Mode kamera: <strong>{{ camera_mode }}</strong>.
+                    Substream (subtype 1) lebih ringan — cocok jika live stream patah-patah di laptop 8 GB.
+                </p>
+                <form method="post" action="/dashboard/model-settings/camera" class="row g-3">
+                    <div class="col-12">
+                        <label for="dahua_subtype" class="form-label">DAHUA_SUBTYPE</label>
+                        <select class="form-select" id="dahua_subtype" name="dahua_subtype">
+                            <option value="0" {% if dahua_subtype == 0 %}selected{% endif %}>0 — Main stream (HD)</option>
+                            <option value="1" {% if dahua_subtype == 1 %}selected{% endif %}>1 — Sub stream (lebih smooth)</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-camera-video me-1"></i>Save camera
+                        </button>
+                        <span class="small text-muted ms-2">Stop lalu Start monitoring agar stream baru aktif.</span>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -151,5 +420,8 @@ function bindSlider(inputId, outputId, decimals) {
 bindSlider('recognition_threshold', 'thresholdValue', 2);
 bindSlider('recognition_margin', 'marginValue', 2);
 bindSlider('recognition_interval', 'intervalValue', 0);
+bindSlider('frame_skip', 'frameSkipValue', 0);
+bindSlider('process_max_width', 'processWidthValue', 0);
+bindSlider('max_faces_per_frame', 'maxFacesValue', 0);
 </script>
 {% endblock %}

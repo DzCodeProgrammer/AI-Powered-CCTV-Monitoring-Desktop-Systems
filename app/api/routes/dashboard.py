@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,7 +29,8 @@ from app.services.unknown_face_service import (
     delete_all_unknown_faces,
     delete_unknown_face,
 )
-from app.services.user_service import delete_user
+from app.services.registration_service import RegistrationError
+from app.services.user_service import delete_user, update_user_phone
 from app.utils.config import get_settings
 from app.utils.templates import templates
 
@@ -130,6 +131,8 @@ async def dashboard_users(
     context["extra_photos"] = request.query_params.get("extras")
     context["deleted"] = request.query_params.get("deleted") == "1"
     context["delete_error"] = request.query_params.get("error") == "delete"
+    context["phone_updated"] = request.query_params.get("phone_updated") == "1"
+    context["phone_error"] = request.query_params.get("error") == "phone"
     return templates.TemplateResponse("dashboard/users.html", context)
 
 
@@ -146,6 +149,29 @@ async def delete_registered_user(
     if not delete_user(db, user_id, settings):
         return RedirectResponse(url="/dashboard/users?error=delete", status_code=303)
     return RedirectResponse(url="/dashboard/users?deleted=1", status_code=303)
+
+
+@router.post("/dashboard/users/{user_id}/phone")
+async def update_user_phone_route(
+    user_id: int,
+    request: Request,
+    phone_number: str = Form(""),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    auth = require_admin(request, db)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    try:
+        user = update_user_phone(db, user_id, phone_number.strip() or None)
+    except RegistrationError:
+        return RedirectResponse(url="/dashboard/users?error=phone", status_code=303)
+    except Exception:
+        return RedirectResponse(url="/dashboard/users?error=phone", status_code=303)
+
+    if user is None:
+        return RedirectResponse(url="/dashboard/users?error=phone", status_code=303)
+    return RedirectResponse(url="/dashboard/users?phone_updated=1", status_code=303)
 
 
 @router.get("/dashboard/attendance")

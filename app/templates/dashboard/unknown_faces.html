@@ -64,7 +64,7 @@
             <div class="card-body p-2">
                 <p class="small mb-1 fw-medium">#{{ face.id }}</p>
                 <p class="small text-muted mb-1">
-                    {{ face.detected_at.strftime('%Y-%m-%d %H:%M') if face.detected_at else '-' }}
+                    {{ face.detected_at|localtime('%Y-%m-%d %H:%M') if face.detected_at else '-' }}
                 </p>
                 {% if face.camera_source %}
                 <p class="small text-muted text-truncate mb-2" title="{{ face.camera_source }}">
@@ -113,6 +113,15 @@
                         maxlength="100"
                         placeholder="e.g. John Doe"
                         required
+                    >
+                    <label for="unknownPersonPhone" class="form-label mt-2">WhatsApp (optional)</label>
+                    <input
+                        type="tel"
+                        class="form-control"
+                        id="unknownPersonPhone"
+                        name="phone_number"
+                        maxlength="20"
+                        placeholder="628123456789"
                     >
                 </div>
                 <div class="modal-footer">

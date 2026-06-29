@@ -11,7 +11,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.attendance import Attendance
+from app.utils.datetime_local import format_datetime_local, now_local
 
 
 def fetch_attendance_records(
@@ -54,7 +54,7 @@ def build_attendance_excel(records: list[Attendance]) -> bytes:
             [
                 record.id,
                 record.detected_name,
-                record.detected_at.strftime("%Y-%m-%d %H:%M:%S")
+                format_datetime_local(record.detected_at, include_zone=False)
                 if record.detected_at
                 else "",
                 record.camera_source,
@@ -89,5 +89,5 @@ def export_attendance_to_excel(
 ) -> tuple[bytes, str]:
     records = fetch_attendance_records(db, start=start, end=end)
     content = build_attendance_excel(records)
-    filename = f"attendance_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"attendance_{now_local().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return content, filename

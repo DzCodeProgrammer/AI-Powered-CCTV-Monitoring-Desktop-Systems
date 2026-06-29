@@ -89,7 +89,7 @@
                     <td>{{ row.avg_per_calendar_day }}</td>
                     <td>{{ row.total_checkins }}</td>
                     <td class="small">
-                        {{ row.last_attendance.strftime('%Y-%m-%d %H:%M') if row.last_attendance else '-' }}
+                        {{ row.last_attendance|localtime('%Y-%m-%d %H:%M') if row.last_attendance else '-' }}
                     </td>
                     <td>
                         {% if row.avg_confidence is not none %}

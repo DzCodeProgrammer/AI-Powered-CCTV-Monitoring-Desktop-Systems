@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     image_path VARCHAR(500) NOT NULL,
     embedding_path VARCHAR(500) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_active TINYINT(1) NOT NULL DEFAULT 1
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    phone_number VARCHAR(20) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS admins (

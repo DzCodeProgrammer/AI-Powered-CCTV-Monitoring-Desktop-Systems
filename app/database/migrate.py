@@ -57,6 +57,10 @@ def migrate_users(engine: Engine) -> None:
     if "is_active" not in cols:
         _add_column(engine, "users", "is_active", "TINYINT(1) NOT NULL DEFAULT 1")
 
+    cols = _table_columns(engine, "users")
+    if "phone_number" not in cols:
+        _add_column(engine, "users", "phone_number", "VARCHAR(20) NULL")
+
 
 def migrate_attendance(engine: Engine) -> None:
     tables = inspect(engine).get_table_names()
@@ -113,9 +117,6 @@ def migrate_unknown_faces(engine: Engine) -> None:
 
 
 def run_migrations(engine: Engine) -> None:
-    if engine.dialect.name == "sqlite":
-        return
-
     try:
         migrate_users(engine)
         migrate_attendance(engine)

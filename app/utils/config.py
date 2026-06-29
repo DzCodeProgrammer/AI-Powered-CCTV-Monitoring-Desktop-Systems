@@ -43,14 +43,14 @@ class Settings(BaseSettings):
     face_model: str = "Facenet512"
     recognition_threshold: float = 0.45
     recognition_margin: float = 0.08
-    detection_interval: float = 30.0
+    detection_interval: float = 10.0
     attendance_interval: float = 300.0
 
     # Performance (Session 11) — tuned for i5 Gen4 / 8GB RAM
     low_end_mode: bool = True
     frame_skip: int = 2
     detection_frame_skip: int = 2
-    recognition_interval: float = 30.0
+    recognition_interval: float = 10.0
     process_max_width: int = 640
     stream_max_width: int = 960
     jpeg_quality: int = 72
@@ -63,6 +63,24 @@ class Settings(BaseSettings):
     dataset_dir: str = "datasets"
     screenshot_dir: str = "screenshots"
     log_dir: str = "logs"
+
+    # Operations — schedule, cleanup (laptop / HDD friendly)
+    monitor_schedule_enabled: bool = False
+    monitor_schedule_start: str = "07:00"
+    monitor_schedule_end: str = "17:00"
+    cleanup_enabled: bool = True
+    log_retention_days: int = 30
+    screenshot_retention_days: int = 14
+    cleanup_interval_hours: int = 24
+
+    # WhatsApp (Fonnte) notifications
+    wa_notify_enabled: bool = False
+    wa_api_token: str = ""
+    wa_admin_phones: str = ""
+    wa_notify_unknown: bool = True
+    wa_notify_attendance: bool = True
+
+    timezone: str = "Asia/Jakarta"
 
     session_max_age: int = 86400
     admin_username: str = "admin"

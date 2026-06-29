@@ -12,7 +12,9 @@ Real-time CCTV monitoring with **face detection**, **face recognition**, **atten
 - YuNet + Haar face detection with colored bounding boxes
 - DeepFace (Facenet512) recognition + model settings UI
 - Attendance logging with duplicate prevention
+- **WhatsApp notifications** (Fonnte) — unknown face + absensi masuk/pulang
 - **Export attendance to Excel** (`.xlsx`)
+- Multi-photo registration, user statistics, monitoring schedule
 - Admin session authentication
 - Optimized for i5 Gen 4 / 8 GB RAM
 - Centralized `.env` configuration + file logging
@@ -68,6 +70,8 @@ See [Hosting Guide](docs/HOSTING.md) · double-click `run_host.bat`
 | [API Documentation](docs/API.md) | Routes & responses |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment |
 | [Hosting Guide](docs/HOSTING.md) | Run locally & LAN host |
+| [Operations Guide](docs/OPERATIONS.md) | Schedule, cleanup, auto-start |
+| [Notifications Guide](docs/NOTIFICATIONS.md) | WhatsApp Fonnte + absensi shift |
 | [Final Deliverables](docs/DELIVERABLES.md) | Session 15 checklist |
 
 **SQL scripts:** [`scripts/init_mysql.sql`](scripts/init_mysql.sql) · [`scripts/schema.sql`](scripts/schema.sql)
@@ -90,6 +94,20 @@ See [Hosting Guide](docs/HOSTING.md) · double-click `run_host.bat`
 ## Target Hardware
 
 Intel Core i5 Gen 4 · 8 GB RAM · 128 GB SSD · `LOW_END_MODE=true` (default)
+
+### Operations (schedule, cleanup, auto-start)
+
+See **[docs/OPERATIONS.md](docs/OPERATIONS.md)** for:
+
+- **Monitoring schedule** — auto start/stop e.g. 07:00–17:00 (saves CPU/heat)
+- **Disk cleanup** — old `logs/` and `screenshots/` on a timer (HDD-friendly)
+- **Windows auto-start** — `.\scripts\install_autostart.ps1`
+
+Tune these from **Dashboard → Model settings → Operations** or `.env`.
+
+### WhatsApp & camera stream
+
+See **[docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)** for Fonnte setup (unknown face + attendance alerts) and **DAHUA_SUBTYPE=1** substream.
 
 ---
 

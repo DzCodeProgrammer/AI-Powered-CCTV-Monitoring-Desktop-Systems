@@ -24,7 +24,7 @@
                 {% if detections %}
                     {% for row in detections %}
                     <tr>
-                        <td>{{ row.timestamp.strftime('%Y-%m-%d %H:%M:%S') if row.timestamp else '-' }}</td>
+                        <td>{{ row.timestamp|localtime if row.timestamp else '-' }}</td>
                         <td>{{ row.name }}</td>
                         <td>
                             {% if row.status == 'Recognized' %}

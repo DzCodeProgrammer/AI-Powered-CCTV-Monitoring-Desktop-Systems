@@ -70,3 +70,21 @@ def delete_user(db: Session, user_id: int, settings: Settings) -> bool:
     rebuild_embeddings(db, settings)
     logger.info("Deleted user %s (id=%s) and rebuilt embeddings", name, user_id)
     return True
+
+
+def update_user_phone(db: Session, user_id: int, phone_number: str | None) -> User | None:
+    from app.services.registration_service import RegistrationError, validate_phone_number
+
+    user = db.get(User, user_id)
+    if user is None:
+        return None
+
+    try:
+        user.phone_number = validate_phone_number(phone_number)
+    except RegistrationError:
+        raise
+
+    if not safe_commit(db, f"update phone for user {user_id}"):
+        return None
+    db.refresh(user)
+    return user

@@ -65,7 +65,7 @@
                             {% for row in records %}
                             <tr>
                                 <td>{{ row.detected_name }}</td>
-                                <td>{{ row.detected_at.strftime('%Y-%m-%d %H:%M') if row.detected_at else '-' }}</td>
+                                <td>{{ row.detected_at|localtime('%Y-%m-%d %H:%M') if row.detected_at else '-' }}</td>
                                 <td>{{ row.status }}</td>
                             </tr>
                             {% endfor %}

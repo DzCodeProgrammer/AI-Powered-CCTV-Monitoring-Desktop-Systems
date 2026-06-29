@@ -18,6 +18,7 @@ from app.services.recognition_service import (
     get_embedding_store,
     get_recognizer,
 )
+from app.services.schedule_service import schedule_status
 from app.utils.config import get_settings, mask_sensitive_url
 from app.utils.templates import templates
 
@@ -100,6 +101,9 @@ async def monitor_page(request: Request, db: Session = Depends(get_db)):
             "camera_connected": camera_connected,
             "monitoring_active": monitoring_active,
             "performance": settings.performance_profile,
+            "schedule_status": schedule_status(settings),
+            "monitor_schedule_start": settings.monitor_schedule_start,
+            "monitor_schedule_end": settings.monitor_schedule_end,
         },
     )
 
@@ -208,10 +212,11 @@ async def monitor_feed(request: Request, db: Session = Depends(get_db)):
         session = SessionLocal()
         try:
             def on_frame(frame, matches):
+                current_settings = get_settings()
                 loggable = [m for m in matches if m.status != STATUS_DETECTING]
                 if loggable:
-                    log_matches(session, settings, frame, loggable, camera_source)
-                    log_attendance(session, settings, loggable, camera_source)
+                    log_matches(session, current_settings, frame, loggable, camera_source)
+                    log_attendance(session, current_settings, loggable, camera_source)
 
             for chunk in camera.generate_mjpeg(on_frame=on_frame):
                 yield chunk

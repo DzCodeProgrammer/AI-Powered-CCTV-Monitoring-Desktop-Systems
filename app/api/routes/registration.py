@@ -70,6 +70,7 @@ async def register_page(request: Request, db: Session = Depends(get_db)):
 async def register_submit(
     request: Request,
     name: str = Form(...),
+    phone_number: str = Form(""),
     image: UploadFile = File(...),
     extra_images: Annotated[list[UploadFile], File()] = [],
     db: Session = Depends(get_db),
@@ -93,7 +94,8 @@ async def register_submit(
         primary_content = await image.read()
         extras = await _read_uploads_async(extra_images)
         user = register_person_with_extras(
-            db, settings, name, image, primary_content, extras
+            db, settings, name, image, primary_content, extras,
+            phone_number=phone_number.strip() or None,
         )
         rebuild_embeddings(db, settings)
         extra_q = f"&extras={len(extras)}" if extras else ""
@@ -137,6 +139,7 @@ async def register_from_unknown_face(
     face_id: int,
     request: Request,
     name: str = Form(...),
+    phone_number: str = Form(""),
     db: Session = Depends(get_db),
 ):
     auth = require_admin(request, db)
@@ -158,7 +161,10 @@ async def register_from_unknown_face(
         )
 
     try:
-        user = register_person_from_image_file(db, settings, name, source_path)
+        user = register_person_from_image_file(
+            db, settings, name, source_path,
+            phone_number=phone_number.strip() or None,
+        )
         rebuild_embeddings(db, settings)
         delete_unknown_face(db, face_id)
         return RedirectResponse(

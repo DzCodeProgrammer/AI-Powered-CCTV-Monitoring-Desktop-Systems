@@ -17,6 +17,40 @@
 <div class="alert alert-danger">A server error occurred. Details are logged in <code>logs/errors.log</code>.</div>
 {% endif %}
 
+<div class="card border-0 shadow-sm mb-3" id="systemResourceCard">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <div>
+                <h2 class="h6 mb-1"><i class="bi bi-speedometer2 me-1"></i>System resources</h2>
+                <p class="small text-muted mb-0" id="resourceMessage">Loading…</p>
+            </div>
+            <span class="badge text-bg-secondary" id="resourceStatusBadge">—</span>
+        </div>
+        <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1">
+                <span>CPU</span>
+                <strong id="cpuLabel">—</strong>
+            </div>
+            <div class="stat-bar-track">
+                <div class="stat-bar-fill" id="cpuBar" style="width: 0%;"></div>
+            </div>
+        </div>
+        <div class="mb-2">
+            <div class="d-flex justify-content-between small mb-1">
+                <span>RAM</span>
+                <strong id="ramLabel">—</strong>
+            </div>
+            <div class="stat-bar-track">
+                <div class="stat-bar-fill" id="ramBar" style="width: 0%;"></div>
+            </div>
+        </div>
+        <div id="stopMonitoringHint" class="alert alert-warning py-2 small mb-0 d-none">
+            Resources are high while monitoring is active.
+            <a href="/dashboard/monitor" class="alert-link">Stop monitoring</a> to free CPU/RAM.
+        </div>
+    </div>
+</div>
+
 <div class="row g-3">
     <div class="col-md-6 col-xl-3">
         <div class="card stat-card border-0 shadow-sm h-100">
@@ -103,7 +137,7 @@
                         {% if recent_activity %}
                             {% for row in recent_activity %}
                             <tr>
-                                <td class="small">{{ row.timestamp.strftime('%H:%M:%S') if row.timestamp else '-' }}</td>
+                                <td class="small">{{ row.timestamp|localtime_short if row.timestamp else '-' }}</td>
                                 <td>{{ row.name }}</td>
                                 <td>
                                     {% if row.status == 'Recognized' %}
@@ -127,4 +161,63 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const cpuBar = document.getElementById('cpuBar');
+    const ramBar = document.getElementById('ramBar');
+    const cpuLabel = document.getElementById('cpuLabel');
+    const ramLabel = document.getElementById('ramLabel');
+    const message = document.getElementById('resourceMessage');
+    const badge = document.getElementById('resourceStatusBadge');
+    const hint = document.getElementById('stopMonitoringHint');
+
+    if (!cpuBar) return;
+
+    function barClass(status) {
+        if (status === 'critical') return 'stat-bar-fill-danger';
+        if (status === 'warning') return 'stat-bar-fill-warning';
+        return '';
+    }
+
+    async function refreshMetrics() {
+        try {
+            const response = await fetch('/api/system/metrics', { credentials: 'same-origin' });
+            if (!response.ok) return;
+            const data = await response.json();
+
+            const cpu = data.cpu_percent ?? 0;
+            const ram = data.ram_percent ?? 0;
+            cpuLabel.textContent = cpu + '%';
+            ramLabel.textContent = data.ram_used_gb + ' / ' + data.ram_total_gb + ' GB (' + ram + '%)';
+            cpuBar.style.width = Math.min(cpu, 100) + '%';
+            ramBar.style.width = Math.min(ram, 100) + '%';
+
+            const cls = barClass(data.status);
+            cpuBar.className = 'stat-bar-fill ' + cls;
+            ramBar.className = 'stat-bar-fill ' + cls;
+
+            message.textContent = data.message || '';
+            badge.textContent = (data.status || 'ok').toUpperCase();
+            badge.className = 'badge ' + (
+                data.status === 'critical' ? 'text-bg-danger' :
+                data.status === 'warning' ? 'text-bg-warning text-dark' : 'text-bg-success'
+            );
+
+            if (data.suggest_stop_monitoring) {
+                hint.classList.remove('d-none');
+            } else {
+                hint.classList.add('d-none');
+            }
+        } catch (e) {
+            message.textContent = 'Could not load system metrics.';
+        }
+    }
+
+    refreshMetrics();
+    setInterval(refreshMetrics, 5000);
+})();
+</script>
 {% endblock %}

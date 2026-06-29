@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.database.errors import safe_commit
 from app.face_recognition.recognizer import STATUS_RECOGNIZED, FaceMatch
 from app.models.attendance import Attendance
+from app.models.user import User
+from app.services.whatsapp_service import notify_attendance
 from app.utils.config import Settings
 
 
@@ -40,6 +42,8 @@ def log_attendance(
     saved: list[Attendance] = []
 
     for match in matches:
+        if match.status != STATUS_RECOGNIZED:
+            continue
         if has_recent_attendance(
             db,
             match.name,
@@ -63,5 +67,7 @@ def log_attendance(
         if safe_commit(db, "log attendance"):
             for record in saved:
                 db.refresh(record)
+                user = db.get(User, record.user_id) if record.user_id else None
+                notify_attendance(settings, db, record, user)
 
     return saved
