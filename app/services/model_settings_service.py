@@ -17,14 +17,15 @@ LAPTOP_8GB_PRESET: dict[str, str] = {
     "FACE_MODEL": "Facenet512",
     "RECOGNITION_THRESHOLD": "0.45",
     "RECOGNITION_MARGIN": "0.08",
-    "RECOGNITION_INTERVAL": "30",
-    "DETECTION_INTERVAL": "30",
-    "FRAME_SKIP": "2",
-    "DETECTION_FRAME_SKIP": "2",
+    "RECOGNITION_INTERVAL": "1",
+    "DETECTION_INTERVAL": "1",
+    "FRAME_SKIP": "1",
+    "DETECTION_FRAME_SKIP": "1",
     "PROCESS_MAX_WIDTH": "640",
-    "STREAM_MAX_WIDTH": "960",
-    "JPEG_QUALITY": "72",
+    "STREAM_MAX_WIDTH": "640",
+    "JPEG_QUALITY": "70",
     "MAX_FACES_PER_FRAME": "2",
+    "ATTENDANCE_INTERVAL": "60",
 }
 
 
@@ -60,7 +61,7 @@ def apply_recognition_settings_to_runtime(settings: Settings) -> None:
 
     recognizer.settings = settings
     recognizer.detector = FaceDetector(settings)
-    recognizer._perf = settings.performance_profile
+    recognizer.refresh_performance(settings)
 
 
 def _format_interval(value: float) -> str:

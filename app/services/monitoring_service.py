@@ -9,7 +9,8 @@ import cv2
 
 from app.camera.frames import make_status_frame
 from app.camera.manager import CameraManager
-from app.services.recognition_service import get_recognizer
+from app.camera.stream_broadcaster import LiveStreamBroadcaster
+from app.services.recognition_service import get_recognizer, shutdown_recognition
 from app.utils.config import Settings
 from app.utils.logging import get_logger
 
@@ -35,12 +36,19 @@ def stop_monitoring() -> None:
     with _lock:
         global _monitoring_active
         _monitoring_active = False
+    LiveStreamBroadcaster.reset()
     CameraManager.reset()
     try:
         get_recognizer().reset_tracking()
     except RuntimeError:
         pass
     logger.info("Live monitoring stopped — camera released")
+
+
+def shutdown_monitoring() -> None:
+    """Release camera and stream threads during app shutdown."""
+    stop_monitoring()
+    shutdown_recognition()
 
 
 def generate_idle_mjpeg(

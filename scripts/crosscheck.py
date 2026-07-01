@@ -21,6 +21,8 @@ CHECKS = [
     "verify_session13.py",
     "verify_session14.py",
     "verify_session15.py",
+    "verify_dahua_events.py",
+    "verify_desktop.py",
     "check_config_security.py",
 ]
 

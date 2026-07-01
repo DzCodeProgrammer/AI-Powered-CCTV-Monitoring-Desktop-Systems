@@ -39,18 +39,27 @@ class Settings(BaseSettings):
     dahua_port: int = 554
     dahua_channel: int = 1
     dahua_subtype: int = 0
+    dahua_http_port: int = 80
+
+    # Phase 2 — Dahua IPC FaceDetection event stream (snapManager.cgi)
+    cctv_mode: Literal["stream", "event", "hybrid"] = "hybrid"
+    dahua_event_enabled: bool = True
+    dahua_event_channel: int = 0
+    dahua_event_heartbeat: int = 5
+    dahua_event_timeout: float = 20.0
+    dahua_event_reconnect: float = 5.0
 
     face_model: str = "Facenet512"
     recognition_threshold: float = 0.45
     recognition_margin: float = 0.08
-    detection_interval: float = 10.0
+    detection_interval: float = 5.0
     attendance_interval: float = 300.0
 
     # Performance (Session 11) — tuned for i5 Gen4 / 8GB RAM
     low_end_mode: bool = True
-    frame_skip: int = 2
-    detection_frame_skip: int = 2
-    recognition_interval: float = 10.0
+    frame_skip: int = 1
+    detection_frame_skip: int = 1
+    recognition_interval: float = 3.0
     process_max_width: int = 640
     stream_max_width: int = 960
     jpeg_quality: int = 72
@@ -85,6 +94,9 @@ class Settings(BaseSettings):
     session_max_age: int = 86400
     admin_username: str = "admin"
     admin_password: str = ""
+
+    desktop_mode: bool = False
+    desktop_display_max_width: int = 640
 
     @property
     def resolved_database_url(self) -> str:
@@ -124,6 +136,24 @@ class Settings(BaseSettings):
         return source
 
     @property
+    def dahua_event_channel_resolved(self) -> int:
+        return self.dahua_event_channel or self.dahua_channel
+
+    @property
+    def event_capture_active(self) -> bool:
+        if not self.dahua_event_enabled or not self.dahua_host:
+            return False
+        return self.cctv_mode in {"event", "hybrid"}
+
+    @property
+    def stream_monitor_active(self) -> bool:
+        return self.cctv_mode in {"stream", "hybrid"}
+
+    @property
+    def dahua_event_camera_source(self) -> str:
+        return f"dahua:event:{self.dahua_host}"
+
+    @property
     def camera_mode_label(self) -> str:
         source = self.camera_source.strip().lower()
         if source in {"dahua", "ip", "cctv"}:
@@ -137,9 +167,9 @@ class Settings(BaseSettings):
         if self.low_end_mode:
             return {
                 "low_end_mode": True,
-                "frame_skip": max(self.frame_skip, 2),
-                "detection_frame_skip": max(self.detection_frame_skip, 2),
-                "recognition_interval": max(self.recognition_interval, 2.0),
+                "frame_skip": max(self.frame_skip, 1),
+                "detection_frame_skip": max(self.detection_frame_skip, 1),
+                "recognition_interval": max(self.recognition_interval, 1.0),
                 "process_max_width": min(self.process_max_width, 640),
                 "stream_max_width": min(self.stream_max_width, 960),
                 "jpeg_quality": min(self.jpeg_quality, 75),

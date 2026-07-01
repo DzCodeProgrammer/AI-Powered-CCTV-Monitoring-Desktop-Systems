@@ -1,0 +1,5 @@
+# Desktop UI (Phase 1 — native admin app)
+PySide6>=6.6.0
+
+# Build .exe (optional, on dev machine)
+pyinstaller>=6.3.0

@@ -17,6 +17,13 @@ def print_startup_banner(settings: Settings) -> None:
         print(f"  {label:18} {url}")
     print(f"  {'Dashboard':18} http://127.0.0.1:{settings.port}/dashboard")
     print(f"  {'Health':18} http://127.0.0.1:{settings.port}/api/health")
+    print(f"  {'CCTV mode':18} {settings.cctv_mode}")
+    if settings.event_capture_active:
+        print(
+            f"  {'Dahua events':18} "
+            f"{settings.dahua_host}:{settings.dahua_http_port} "
+            f"(channel {settings.dahua_event_channel_resolved})"
+        )
     if settings.host == "0.0.0.0":
         print("\n  Network mode: other devices on your LAN can open the Network URL.")
         print("  Allow port in Windows Firewall if connection is refused.")

@@ -39,26 +39,29 @@ CCTV provides a **live video stream** (RTSP). Smart CCTV on the server:
 
 ---
 
-## Phase 2 (planned) — CCTV event-driven
+## Phase 2 — CCTV event-driven (Dahua IPC)
 
-Wait for **events from the IP camera/NVR** (motion, IVS, SDK callback) instead of continuous stream processing on the laptop.
+Subscribe **FaceDetection** dari kamera Dahua langsung via `snapManager.cgi` (HTTP Digest, port 80). Bukan DSS platform.
 
 ```text
-[Dahua event] → HTTP/SDK callback → [Smart CCTV server]
-                                      ├─ On-demand frame or camera snapshot
-                                      ├─ Recognition (if needed)
-                                      └─ Log + optional WA
+[Dahua IPC event stream] → [Smart CCTV subscriber]
+                              ├─ JPEG snapshot (IndexInGroup=1 only)
+                              ├─ Face recognition (DeepFace)
+                              ├─ Annotated screenshot + logs
+                              └─ Attendance + optional WA
 ```
 
 Goals:
 
 - Lower CPU/heat on 8 GB laptops
-- No need for full-time MJPEG stream processing
-- Screenshots optional if the camera sends snapshots with the event
+- Process only when the camera detects a face
+- Screenshots with **name burned in** on the frame
 
-**Not implemented yet.** Phase 1 must be stable first (recognition accuracy, attendance, optional WA).
+**Implemented.** See **[docs/DAHUA_IPC_EVENTS.md](DAHUA_IPC_EVENTS.md)**.
 
-See **[docs/DAHUA_DSS_API_SUMMARY.md](DAHUA_DSS_API_SUMMARY.md)** for extracted notes from `dahua-cctv.pdf` (DSS V8.7 HTTP/MQ alarm & event APIs). Raw text: `docs/extracted/dahua-cctv-full.txt`.
+Configure: `CCTV_MODE=event|stream|hybrid`, `DAHUA_EVENT_ENABLED`, `DAHUA_HTTP_PORT=80`.
+
+DSS V8.7 API (`dahua-cctv.pdf`) is **out of scope** — see [DAHUA_DSS_API_SUMMARY.md](DAHUA_DSS_API_SUMMARY.md) for reference only.
 
 ---
 

@@ -12,7 +12,9 @@ from app.api.routes import auth, dashboard, health, model_settings, monitoring, 
 from app.database.connection import SessionLocal, init_db
 from app.services.auth_service import ensure_default_admin
 from app.services.background_tasks import maintenance_loop
+from app.services.dahua_event_service import start_event_capture, stop_event_capture
 from app.services.recognition_service import initialize_recognition
+from app.services.monitoring_service import shutdown_monitoring
 from app.services.schedule_service import apply_monitor_schedule
 from app.utils.config import get_settings
 from app.utils.logging import setup_logging
@@ -35,7 +37,10 @@ async def lifespan(app: FastAPI):
 
     apply_monitor_schedule(get_settings())
     maintenance_task = asyncio.create_task(maintenance_loop())
+    await start_event_capture()
     yield
+    shutdown_monitoring()
+    await stop_event_capture()
     maintenance_task.cancel()
     with suppress(asyncio.CancelledError):
         await maintenance_task

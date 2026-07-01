@@ -19,6 +19,34 @@ YUNET_MODEL_URL = (
 YUNET_MODEL_PATH = Path("models") / "face_detection_yunet_2023mar.onnx"
 
 
+def _resolve_cascade_path(filename: str) -> str:
+    """Locate an OpenCV Haar cascade, resilient to PyInstaller bundling.
+
+    In a frozen build `cv2.data.haarcascades` may point to a folder that was
+    not collected, so also probe common bundle locations.
+    """
+    candidates: list[Path] = []
+
+    cv2_data = getattr(getattr(cv2, "data", None), "haarcascades", None)
+    if cv2_data:
+        candidates.append(Path(cv2_data) / filename)
+
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        base = Path(meipass)
+        candidates.append(base / "cv2" / "data" / filename)
+        candidates.append(base / "data" / filename)
+
+    candidates.append(Path(cv2.__file__).resolve().parent / "data" / filename)
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+
+    # Fall back to the cv2-reported path so the caller reports a useful error.
+    return str(candidates[0]) if candidates else filename
+
+
 def ensure_yunet_model() -> Path:
     if YUNET_MODEL_PATH.is_file():
         return YUNET_MODEL_PATH
@@ -38,10 +66,12 @@ class FaceDetector:
         self._yunet: cv2.FaceDetectorYN | None = None
         self._yunet_input: tuple[int, int] | None = None
 
-        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        cascade_path = _resolve_cascade_path("haarcascade_frontalface_default.xml")
         self._cascade = cv2.CascadeClassifier(cascade_path)
         if self._cascade.empty():
-            raise RuntimeError("Failed to load Haar cascade classifier.")
+            raise RuntimeError(
+                f"Failed to load Haar cascade classifier (tried: {cascade_path})."
+            )
 
         if self._backend in {"yunet", "auto"}:
             self._init_yunet()

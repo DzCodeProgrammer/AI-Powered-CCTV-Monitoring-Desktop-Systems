@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from sqlalchemy.orm import Session
 
+from app.face_recognition.overlay import draw_face_boxes
 from app.face_recognition.recognizer import STATUS_UNKNOWN, FaceMatch
 from app.database.errors import safe_commit
 from app.models.detection import Detection
@@ -82,7 +83,9 @@ def log_matches(
                 subdir="unknown",
             )
         else:
-            screenshot_path = _save_screenshot(frame, match.name, settings)
+            annotated = frame.copy()
+            draw_face_boxes(annotated, [match])
+            screenshot_path = _save_screenshot(annotated, match.name, settings)
 
         detection = Detection(
             user_id=match.user_id,

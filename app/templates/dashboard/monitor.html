@@ -84,12 +84,16 @@
                 <h2 class="h6 mb-0"><i class="bi bi-broadcast me-1"></i>Live stream</h2>
             </div>
             <div class="card-body p-2">
-                <div class="ratio ratio-16x9 bg-dark rounded overflow-hidden">
+                <div class="ratio ratio-16x9 bg-dark rounded overflow-hidden monitor-feed-wrap">
+                    <div id="feedPlaceholder" class="monitor-feed-placeholder">
+                        <div class="spinner-border text-light" role="status"></div>
+                        <span>Connecting to camera…</span>
+                    </div>
                     <img
                         id="liveFeed"
-                        src="/dashboard/monitor/feed?t={{ request.query_params.get('camera', '') }}"
+                        data-feed-url="/dashboard/monitor/feed?t={{ request.query_params.get('camera', '') }}"
                         alt="Live camera feed"
-                        class="monitor-feed"
+                        class="monitor-feed d-none"
                     >
                 </div>
             </div>
@@ -141,7 +145,7 @@
                 <h2 class="h6 text-uppercase text-muted">Face AI pipeline</h2>
                 <ul class="list-unstyled mb-0 small">
                     <li class="mb-2"><i class="bi bi-bounding-box text-warning me-1"></i><strong>Detection</strong> — YuNet/Haar finds faces every frame (yellow box while pending)</li>
-                    <li class="mb-2"><i class="bi bi-person-check text-success me-1"></i><strong>Recognition</strong> — DeepFace {{ face_model }} every {{ performance.recognition_interval }}s (green = known, red = unknown)</li>
+                    <li class="mb-2"><i class="bi bi-person-check text-success me-1"></i><strong>Recognition</strong> — DeepFace {{ face_model }} async (~{{ performance.recognition_interval }}s throttle; stream stays live)</li>
                     <li class="mb-2"><i class="bi bi-whatsapp text-success me-1"></i><strong>WA absensi</strong> — max 2×/hari: masuk 07:00–16:59, pulang 17:00–06:59 WIB</li>
                     <li><i class="bi bi-clock-history me-1"></i><strong>Log cooldown</strong> — detection {{ performance.recognition_interval }}s · attendance {{ attendance_interval }}s</li>
                 </ul>
@@ -182,4 +186,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const img = document.getElementById('liveFeed');
+    const placeholder = document.getElementById('feedPlaceholder');
+    if (!img || !placeholder) return;
+
+    const url = img.dataset.feedUrl;
+    img.addEventListener('load', function () {
+        placeholder.classList.add('d-none');
+        img.classList.remove('d-none');
+    });
+    img.addEventListener('error', function () {
+        placeholder.querySelector('span').textContent = 'Camera feed unavailable — retrying…';
+    });
+
+    requestAnimationFrame(function () {
+        img.src = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+    });
+})();
+</script>
 {% endblock %}

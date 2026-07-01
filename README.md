@@ -1,14 +1,27 @@
-# AI-Powered CCTV Monitoring Web System
+# Smart CCTV — Desktop Monitoring System
 
-Real-time CCTV monitoring with **face detection**, **face recognition**, **attendance logging**, **Excel export**, and a **web dashboard**.
+Real-time CCTV monitoring with **face detection**, **face recognition**, **attendance logging**, and admin dashboard — available as a **native desktop app** (recommended) or **web dashboard** (development / legacy).
 
 **Repository:** [github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems](https://github.com/DzCodeProgrammer/AI-Powered-CCTV-Monitoring-Web-Systems)
 
 ---
 
+## Desktop app (recommended — single admin laptop)
+
+```powershell
+pip install -r requirements.txt -r requirements-desktop.txt
+copy .env.example .env
+python desktop_main.py
+```
+
+Or `run_desktop.bat` · See **[Desktop Guide](docs/DESKTOP.md)** · Build `.exe`: `pyinstaller smart_cctv_desktop.spec`
+
+---
+
 ## Features
 
-- Live MJPEG stream — webcam, RTSP, or Dahua IP CCTV
+- **Native desktop app** (PySide6) — register, model settings, unknown faces, Excel export, system tray
+- Live stream — webcam, RTSP, or Dahua IP CCTV (+ event capture; default `event` mode on desktop)
 - YuNet + Haar face detection with colored bounding boxes
 - DeepFace (Facenet512) recognition + model settings UI
 - Attendance logging with duplicate prevention
@@ -69,7 +82,7 @@ See [Hosting Guide](docs/HOSTING.md) · double-click `run_host.bat`
 | [Database Setup](docs/DATABASE.md) | MySQL schema & migrations |
 | [API Documentation](docs/API.md) | Routes & responses |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Production deployment |
-| [Hosting Guide](docs/HOSTING.md) | Run locally & LAN host |
+| [Desktop Guide](docs/DESKTOP.md) | Native app & `.exe` build |
 | [Operations Guide](docs/OPERATIONS.md) | Schedule, cleanup, auto-start |
 | [Notifications Guide](docs/NOTIFICATIONS.md) | WhatsApp Fonnte + absensi shift |
 | [Final Deliverables](docs/DELIVERABLES.md) | Session 15 checklist |

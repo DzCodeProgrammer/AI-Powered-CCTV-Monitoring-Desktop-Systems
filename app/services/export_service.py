@@ -11,6 +11,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.attendance import Attendance
 from app.utils.datetime_local import format_datetime_local, now_local
 
 

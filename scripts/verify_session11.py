@@ -61,8 +61,10 @@ def main() -> int:
             "_match_face",
             return_value=("Alice", STATUS_RECOGNIZED, 0.88, 1),
         ) as mock_match:
-            _, matches = recognizer.process_frame(frame)
+            recognizer.process_frame(frame)
+            recognizer.flush_recognition(timeout=3.0)
             calls_after_first = mock_match.call_count
+            matches = recognizer._tracks_to_matches()
 
             for _ in range(int(perf["frame_skip"]) - 1):
                 recognizer.process_frame(frame)
@@ -74,6 +76,9 @@ def main() -> int:
 
             for _ in range(5):
                 recognizer.process_frame(frame)
+
+            recognizer.flush_recognition(timeout=3.0)
+            matches = recognizer._tracks_to_matches()
 
             if mock_match.call_count > calls_after_first + 2:
                 print("FAIL: DeepFace called too frequently (not throttled)")

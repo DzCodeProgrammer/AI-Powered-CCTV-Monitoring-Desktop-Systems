@@ -4,13 +4,15 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.camera.manager import CameraManager
+from app.camera.stream_broadcaster import LiveStreamBroadcaster
 from app.database.connection import SessionLocal, get_db
-from app.face_recognition.recognizer import STATUS_DETECTING
+from app.face_recognition.recognizer import STATUS_DETECTING, RecognitionEvent
 from app.services.attendance_service import log_attendance
 from app.services.detection_service import log_matches
 from app.services.monitoring_service import (
     generate_idle_mjpeg,
     is_monitoring_active,
+    shutdown_monitoring,
     start_monitoring,
     stop_monitoring,
 )
@@ -71,10 +73,8 @@ async def monitor_page(request: Request, db: Session = Depends(get_db)):
     camera_connected = None
     monitoring_active = is_monitoring_active()
     if monitoring_active:
-        try:
-            camera_connected = _get_camera_manager(request).is_connected
-        except RuntimeError:
-            camera_connected = False
+        broadcaster = LiveStreamBroadcaster.get()
+        camera_connected = broadcaster.is_connected if broadcaster.is_running else None
 
     return templates.TemplateResponse(
         "dashboard/monitor.html",
@@ -143,6 +143,7 @@ async def switch_camera(
 
     try:
         if is_monitoring_active():
+            LiveStreamBroadcaster.reset()
             manager = CameraManager.switch_source(settings, get_recognizer(), source)
             get_recognizer().reset_tracking()
             if not manager.is_connected:
@@ -198,27 +199,31 @@ async def monitor_feed(request: Request, db: Session = Depends(get_db)):
         )
 
     camera_source = _active_camera_source(request)
-
-    try:
-        camera = _get_camera_manager(request)
-    except RuntimeError:
-        return StreamingResponse(
-            iter([b""]),
-            status_code=503,
-            media_type="text/plain",
-        )
+    broadcaster = LiveStreamBroadcaster.get()
 
     def generate():
         session = SessionLocal()
         try:
-            def on_frame(frame, matches):
+            def on_recognition(event: RecognitionEvent):
+                if event.match.status == STATUS_DETECTING:
+                    return
                 current_settings = get_settings()
-                loggable = [m for m in matches if m.status != STATUS_DETECTING]
-                if loggable:
-                    log_matches(session, current_settings, frame, loggable, camera_source)
-                    log_attendance(session, current_settings, loggable, camera_source)
+                log_matches(
+                    session,
+                    current_settings,
+                    event.annotated_frame,
+                    [event.match],
+                    camera_source,
+                )
+                log_attendance(session, current_settings, [event.match], camera_source)
 
-            for chunk in camera.generate_mjpeg(on_frame=on_frame):
+            broadcaster.ensure_running(
+                settings,
+                get_recognizer(),
+                camera_source,
+                on_recognition=on_recognition,
+            )
+            for chunk in broadcaster.iter_mjpeg():
                 yield chunk
         finally:
             session.close()

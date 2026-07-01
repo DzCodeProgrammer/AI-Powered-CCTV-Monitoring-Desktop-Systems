@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import threading
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import cv2
@@ -16,7 +18,9 @@ from app.face_recognition.embeddings import (
 from app.face_recognition.frame_utils import crop_face, resize_frame, scale_bbox
 from app.face_recognition.overlay import draw_face_boxes
 from app.utils.config import Settings
-from app.utils.logging import log_exception
+from app.utils.logging import get_logger, log_exception
+
+logger = get_logger("face_recognition")
 
 STATUS_RECOGNIZED = "Recognized"
 STATUS_UNKNOWN = "Unknown"
@@ -34,12 +38,21 @@ class FaceMatch:
 
 @dataclass
 class _FaceTrack:
+    track_id: int
     bbox: tuple[int, int, int, int]
     name: str = "Detecting"
     status: str = STATUS_DETECTING
     confidence: float = 0.0
     user_id: int | None = None
     last_recognition: float = field(default_factory=lambda: 0.0)
+
+
+@dataclass(frozen=True)
+class RecognitionEvent:
+    """A face that just finished async DeepFace recognition."""
+
+    match: FaceMatch
+    annotated_frame: np.ndarray
 
 
 class FaceRecognizer:
@@ -53,19 +66,75 @@ class FaceRecognizer:
         self._tracks: list[_FaceTrack] = []
         self._last_matches: list[FaceMatch] = []
         self._perf = settings.performance_profile
+        self._next_track_id = 1
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="deepface")
+        self._in_flight: list[tuple[int, Future, np.ndarray]] = []
+        self._pending_track_ids: set[int] = set()
+        self._newly_recognized: list[RecognitionEvent] = []
+        self._results_lock = threading.Lock()
+        self._shutdown = False
+
+    @property
+    def is_shutdown(self) -> bool:
+        return self._shutdown
+
+    def shutdown(self, wait: bool = False) -> None:
+        """Stop accepting DeepFace jobs — call before server exit."""
+        self._shutdown = True
+        self._executor.shutdown(wait=wait, cancel_futures=True)
+        self._in_flight.clear()
+        self._pending_track_ids.clear()
 
     def update_embeddings(self, embedding_store: EmbeddingStore) -> None:
         self.embedding_store = embedding_store
+
+    def refresh_performance(self, settings: Settings | None = None) -> None:
+        settings = settings or self.settings
+        self.settings = settings
+        self._perf = settings.performance_profile
 
     def reset_tracking(self) -> None:
         """Clear tracks when camera source changes."""
         self._frame_index = 0
         self._tracks = []
         self._last_matches = []
+        self._pending_track_ids.clear()
+        with self._results_lock:
+            self._newly_recognized.clear()
 
     @property
     def deepface_call_count(self) -> int:
         return getattr(self, "_deepface_calls", 0)
+
+    def warmup_model(self) -> None:
+        """Pre-load TensorFlow / DeepFace weights to avoid a long first-frame delay."""
+        try:
+            rgb = np.zeros((96, 96, 3), dtype=np.uint8)
+            DeepFace.represent(
+                img_path=rgb,
+                model_name=self.settings.face_model,
+                enforce_detection=False,
+                detector_backend="skip",
+            )
+            logger.info("DeepFace model warmup complete (%s)", self.settings.face_model)
+        except Exception as exc:
+            log_exception("face_recognition", "DeepFace warmup failed (non-fatal)", exc)
+
+    def drain_recognition_events(self) -> list[RecognitionEvent]:
+        with self._results_lock:
+            events = self._newly_recognized[:]
+            self._newly_recognized.clear()
+        return events
+
+    def flush_recognition(self, timeout: float = 5.0) -> None:
+        """Wait for in-flight DeepFace jobs (used by tests)."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            self._collect_recognition_results()
+            if not self._in_flight:
+                return
+            time.sleep(0.02)
+        self._collect_recognition_results()
 
     def _match_face(self, face_image: np.ndarray) -> tuple[str, str, float, int | None]:
         if self.embedding_store.is_empty() or face_image.size == 0:
@@ -115,6 +184,12 @@ class FaceRecognizer:
 
         return "Unknown", STATUS_UNKNOWN, max(0.0, 1.0 - best_distance), None
 
+    def _find_track(self, track_id: int) -> _FaceTrack | None:
+        for track in self._tracks:
+            if track.track_id == track_id:
+                return track
+        return None
+
     def _bbox_center(self, bbox: tuple[int, int, int, int]) -> tuple[float, float]:
         x, y, w, h = bbox
         return x + w / 2, y + h / 2
@@ -150,6 +225,7 @@ class FaceRecognizer:
                 old = self._tracks[best_idx]
                 new_tracks.append(
                     _FaceTrack(
+                        track_id=old.track_id,
                         bbox=bbox,
                         name=old.name,
                         status=old.status,
@@ -159,24 +235,82 @@ class FaceRecognizer:
                     )
                 )
             else:
-                new_tracks.append(_FaceTrack(bbox=bbox))
+                new_tracks.append(_FaceTrack(track_id=self._next_track_id, bbox=bbox))
+                self._next_track_id += 1
 
         self._tracks = new_tracks
 
-    def _run_recognition(self, frame: np.ndarray) -> None:
-        now = time.time()
+    def _should_schedule_recognition(self, track: _FaceTrack, now: float) -> bool:
+        if track.track_id in self._pending_track_ids:
+            return False
         interval = float(self._perf["recognition_interval"])
+        if track.last_recognition <= 0:
+            return True
+        return (now - track.last_recognition) >= interval
 
-        for track in self._tracks:
-            if now - track.last_recognition < interval:
+    def _schedule_recognition(
+        self,
+        track: _FaceTrack,
+        display_frame: np.ndarray,
+        full_frame: np.ndarray,
+    ) -> None:
+        now = time.time()
+        if not self._should_schedule_recognition(track, now):
+            return
+
+        roi = crop_face(full_frame, track.bbox)
+        if roi.size == 0:
+            return
+
+        track.last_recognition = now
+        self._pending_track_ids.add(track.track_id)
+        snapshot = display_frame.copy()
+        track_id = track.track_id
+
+        if self._shutdown:
+            return
+        try:
+            future = self._executor.submit(self._match_face, roi.copy())
+        except RuntimeError:
+            return
+        self._in_flight.append((track_id, future, snapshot))
+
+    def _collect_recognition_results(self) -> None:
+        still_pending: list[tuple[int, Future, np.ndarray]] = []
+        for track_id, future, snapshot in self._in_flight:
+            if not future.done():
+                still_pending.append((track_id, future, snapshot))
                 continue
-            face_roi = crop_face(frame, track.bbox)
-            name, status, confidence, user_id = self._match_face(face_roi)
+
+            self._pending_track_ids.discard(track_id)
+            try:
+                name, status, confidence, user_id = future.result()
+            except Exception as exc:
+                log_exception("face_recognition", "Async recognition failed", exc)
+                continue
+
+            track = self._find_track(track_id)
+            if track is None:
+                continue
+
             track.name = name
             track.status = status
             track.confidence = confidence
             track.user_id = user_id
-            track.last_recognition = now
+
+            match = FaceMatch(
+                name=track.name,
+                status=track.status,
+                confidence=track.confidence,
+                user_id=track.user_id,
+                bbox=track.bbox,
+            )
+            annotated = snapshot.copy()
+            draw_face_boxes(annotated, [match])
+            with self._results_lock:
+                self._newly_recognized.append(RecognitionEvent(match=match, annotated_frame=annotated))
+
+        self._in_flight = still_pending
 
     def _tracks_to_matches(self) -> list[FaceMatch]:
         return [
@@ -190,36 +324,67 @@ class FaceRecognizer:
             for track in self._tracks
         ]
 
-    def process_frame(self, frame: np.ndarray) -> tuple[np.ndarray, list[FaceMatch]]:
+    def process_snapshot(self, frame: np.ndarray) -> tuple[np.ndarray, list[FaceMatch]]:
+        """One-shot detect + recognize for event snapshots (blocking)."""
         perf = self._perf
-        frame_skip = int(perf["frame_skip"])
-        should_process = self._frame_index % frame_skip == 0
-        self._frame_index += 1
+        proc_frame, proc_scale = resize_frame(frame, int(perf["process_max_width"]))
+        bboxes = self.detector.detect(proc_frame)
+        max_faces = int(perf["max_faces_per_frame"])
+        matches: list[FaceMatch] = []
 
+        for bbox in bboxes[:max_faces]:
+            full_bbox = scale_bbox(bbox, proc_scale)
+            face_roi = crop_face(frame, full_bbox)
+            name, status, confidence, user_id = self._match_face(face_roi)
+            matches.append(
+                FaceMatch(
+                    name=name,
+                    status=status,
+                    confidence=confidence,
+                    user_id=user_id,
+                    bbox=full_bbox,
+                )
+            )
+
+        annotated = frame.copy()
+        draw_face_boxes(annotated, matches)
+        return annotated, matches
+
+    def annotate_stream_frame(
+        self,
+        frame: np.ndarray,
+        *,
+        run_ai: bool = True,
+    ) -> tuple[np.ndarray, list[FaceMatch]]:
+        """Fast stream path: always show the latest camera frame with overlays."""
+        if self._shutdown:
+            display, _ = resize_frame(frame, int(self._perf["stream_max_width"]))
+            return draw_face_boxes(display, self._last_matches), self._last_matches
+
+        self._collect_recognition_results()
+
+        perf = self._perf
         display, display_scale = resize_frame(frame, int(perf["stream_max_width"]))
 
-        if not should_process:
-            matches = self._last_matches
-            annotated = draw_face_boxes(display, matches)
-            return annotated, matches
-
-        if should_process:
-            detect_every = frame_skip * int(perf["detection_frame_skip"])
-            if not self._tracks or (self._frame_index - 1) % detect_every == 0:
+        if run_ai:
+            self._frame_index += 1
+            frame_skip = max(1, int(perf["frame_skip"]))
+            detect_every = max(1, frame_skip * int(perf["detection_frame_skip"]))
+            if not self._tracks or self._frame_index % detect_every == 0:
                 proc_frame, proc_scale = resize_frame(frame, int(perf["process_max_width"]))
                 bboxes = self.detector.detect(proc_frame)
                 full_bboxes = [scale_bbox(b, proc_scale) for b in bboxes]
                 display_bboxes = [scale_bbox(b, 1 / display_scale) for b in full_bboxes]
                 self._update_tracks(display_bboxes)
 
-        if self._tracks:
-            self._run_recognition(display)
+            for track in self._tracks:
+                self._schedule_recognition(track, display, frame)
 
         matches = self._tracks_to_matches()
         self._last_matches = matches
         annotated = draw_face_boxes(display, matches)
 
-        if not matches:
+        if run_ai and not matches:
             cv2.putText(
                 annotated,
                 "No face detected - face the camera, improve lighting",
@@ -232,3 +397,10 @@ class FaceRecognizer:
             )
 
         return annotated, matches
+
+    def process_frame(self, frame: np.ndarray) -> tuple[np.ndarray, list[FaceMatch]]:
+        """Legacy/test entry: honour frame_skip before running AI."""
+        frame_skip = max(1, int(self._perf["frame_skip"]))
+        run_ai = (self._frame_index % frame_skip) == 0
+        self._frame_index += 1
+        return self.annotate_stream_frame(frame, run_ai=run_ai)

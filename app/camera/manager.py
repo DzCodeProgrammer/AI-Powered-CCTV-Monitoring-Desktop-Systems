@@ -30,6 +30,12 @@ def open_video_capture(source: Any) -> cv2.VideoCapture:
     if isinstance(source, str) and source.lower().startswith("rtsp"):
         capture = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
         capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # Low-latency RTSP (FFmpeg options via OpenCV)
+        try:
+            capture.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 8000)
+            capture.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 3000)
+        except Exception:
+            pass
     elif isinstance(source, int) or (isinstance(source, str) and source.strip().isdigit()):
         index = int(source)
         if sys.platform == "win32":
@@ -143,8 +149,11 @@ class CameraManager:
             if self._capture is None or not self._capture.isOpened():
                 self._connected = False
             else:
-                success, frame = self._capture.read()
-                if success and frame is not None:
+                is_rtsp = isinstance(self._source, str) and self._source.lower().startswith(
+                    "rtsp"
+                )
+                frame = self._read_capture_frame(flush_buffer=is_rtsp)
+                if frame is not None:
                     self._consecutive_failures = 0
                     self._connected = True
                     self._disconnect_logged = False
@@ -158,6 +167,22 @@ class CameraManager:
                 log_exception("camera", self._last_error)
                 self._disconnect_logged = True
             self._maybe_reconnect()
+        return None
+
+    def _read_capture_frame(self, flush_buffer: bool = False) -> np.ndarray | None:
+        if self._capture is None:
+            return None
+        if flush_buffer:
+            for _ in range(20):
+                if not self._capture.grab():
+                    break
+            success, frame = self._capture.retrieve()
+            if success and frame is not None:
+                return frame
+            return None
+        success, frame = self._capture.read()
+        if success and frame is not None:
+            return frame
         return None
 
     def read_annotated(self) -> tuple[np.ndarray | None, list[FaceMatch]]:
@@ -187,17 +212,19 @@ class CameraManager:
             self._capture = None
             self._connected = False
 
-    def generate_mjpeg(self, on_frame=None):
+    def generate_mjpeg(self, on_recognition=None):
         while True:
             annotated, matches = self.read_annotated()
+            if on_recognition is not None:
+                for event in self.recognizer.drain_recognition_events():
+                    try:
+                        on_recognition(event)
+                    except Exception as exc:
+                        log_exception("camera", "Recognition callback failed", exc)
+
             if annotated is None:
                 annotated = self.status_frame()
                 matches = []
-            elif on_frame is not None and matches:
-                try:
-                    on_frame(annotated, matches)
-                except Exception as exc:
-                    log_exception("camera", "Frame callback failed", exc)
 
             success, buffer = cv2.imencode(
                 ".jpg",
@@ -212,4 +239,4 @@ class CameraManager:
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
             )
-            time.sleep(0.03 if self._connected else 0.5)
+            time.sleep(0.02 if self._connected else 0.5)
